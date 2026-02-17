@@ -1,0 +1,210 @@
+---
+title: Authentication
+description: How authentication works in the LLMG gateway — gateway access tokens and provider API keys.
+---
+
+LLMG has **two distinct authentication layers**. Understanding the difference is critical to avoiding `authentication_error` responses.
+
+## Overview
+
+```
+┌──────────┐   Authorization: Bearer <token>   ┌──────────────┐   OPENAI_API_KEY=sk-...   ┌──────────┐
+│  Client  │ ──────────────────────────────────►│ LLMG Gateway │ ─────────────────────────►│ Provider │
+└──────────┘        Layer 1: Gateway Auth       └──────────────┘   Layer 2: Provider Auth  └──────────┘
+```
+
+| Layer | Purpose | Configured by | Validated? |
+|-------|---------|---------------|------------|
+| **Gateway Auth** | Controls who can access the gateway | Client sends `Authorization` header | Currently: presence-only (any Bearer token accepted) |
+| **Provider Auth** | Authenticates with upstream LLM providers | Server-side env vars / `llmg.toml` | Yes — validated by the provider API |
+
+---
+
+## Layer 1: Gateway Authentication (Client → Gateway)
+
+The gateway requires an `Authorization: Bearer <token>` header on **every request** except `/health`.
+
+### Current Behavior
+
+:::caution[Token not validated yet]
+In the current release, the gateway **only checks that the header exists** and starts with `Bearer `. The actual token value is not validated against any secret. Any non-empty Bearer token will be accepted.
+
+This will change in a future release — see [Future: Configurable Auth](#future-configurable-gateway-auth) below.
+:::
+
+**What works:**
+```bash
+# Any Bearer token is accepted
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer any-value-here" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openai/gpt-4", "messages": [{"role": "user", "content": "Hi"}]}'
+```
+
+**What fails:**
+```bash
+# Missing header entirely → 401 authentication_error
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openai/gpt-4", "messages": [{"role": "user", "content": "Hi"}]}'
+
+# Wrong format (not "Bearer ...") → 401 authentication_error
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Basic dXNlcjpwYXNz" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openai/gpt-4", "messages": [{"role": "user", "content": "Hi"}]}'
+```
+
+### Error Response
+
+When the header is missing or malformed, you'll receive:
+
+```json
+{
+  "error": {
+    "message": "Invalid authentication",
+    "type": "authentication_error"
+  }
+}
+```
+
+HTTP status: **401 Unauthorized**
+
+### Skipped Endpoints
+
+The following endpoints **do not** require an `Authorization` header:
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/health` | GET | Health check |
+
+---
+
+## Layer 2: Provider Authentication (Gateway → Provider)
+
+Provider API keys are configured **on the server side** and are never sent by the client. The gateway injects the correct credentials when forwarding requests upstream.
+
+### Setting Provider Keys
+
+**Environment variables** (recommended):
+```bash
+OPENAI_API_KEY=sk-...
+ANTHROPIC_API_KEY=sk-ant-...
+GROQ_API_KEY=gsk_...
+```
+
+**Config file** (`llmg.toml`):
+```toml
+[providers.openai]
+enabled = true
+api_key = "${OPENAI_API_KEY}"   # References env var
+
+[providers.anthropic]
+enabled = true
+api_key = "sk-ant-hardcoded"    # Or hardcode (not recommended)
+```
+
+The `${ENV_VAR}` syntax in the config file expands environment variables at startup. If the env var is not set, the value is used as-is.
+
+### How Provider Keys Are Resolved
+
+1. If `api_key` is set in `llmg.toml`, that value is used (with `${...}` expansion).
+2. If `api_key` is **not** set in the config, the gateway checks for the conventional env var (e.g., `OPENAI_API_KEY` for the `openai` provider).
+3. If neither is found, the provider is skipped during registration and requests to it return `Unknown provider`.
+
+### Provider Auth Errors
+
+If a provider key is invalid or expired, you'll see a **provider_error** (not `authentication_error`):
+
+```json
+{
+  "error": {
+    "message": "Authentication failed",
+    "type": "provider_error"
+  }
+}
+```
+
+HTTP status: **401 Unauthorized**
+
+This is distinct from the gateway-level `authentication_error` — it means the gateway accepted your request but the upstream provider rejected the key.
+
+---
+
+## OpenAI SDK Compatibility
+
+The gateway is designed to work with the OpenAI SDK. Set `api_key` to any value (it just needs to be present to satisfy the SDK's own validation):
+
+**Python:**
+```python
+from openai import OpenAI
+
+client = OpenAI(
+    base_url="http://localhost:8080/v1",
+    api_key="any-value",  # Gateway doesn't validate the token (yet)
+)
+
+response = client.chat.completions.create(
+    model="openai/gpt-4",
+    messages=[{"role": "user", "content": "Hello!"}],
+)
+```
+
+**Node.js:**
+```javascript
+import OpenAI from "openai";
+
+const client = new OpenAI({
+  baseURL: "http://localhost:8080/v1",
+  apiKey: "any-value",
+});
+
+const response = await client.chat.completions.create({
+  model: "openai/gpt-4",
+  messages: [{ role: "user", content: "Hello!" }],
+});
+```
+
+---
+
+## Future: Configurable Gateway Auth
+
+:::note[Planned]
+Configurable gateway authentication is planned for a future release. The design will allow you to control auth behavior via `llmg.toml`.
+:::
+
+The planned configuration will look like:
+
+```toml
+[server.auth]
+# Enable or disable gateway auth entirely
+enabled = true
+
+# Accepted gateway API keys
+# Clients must send one of these as "Authorization: Bearer <key>"
+keys = [
+  "${LLMG_API_KEY}",
+  "${LLMG_API_KEY_2}",
+]
+```
+
+**Planned behavior:**
+
+| `enabled` | `keys` | Result |
+|-----------|--------|--------|
+| `false` | — | No auth required, any client can access the gateway |
+| `true` | empty `[]` | Current behavior — any Bearer token accepted |
+| `true` | `["sk-gw-abc"]` | Only requests with `Bearer sk-gw-abc` are accepted |
+| `true` | `["key1", "key2"]` | Multiple keys supported (e.g., per-team or per-environment) |
+
+This will allow the gateway to be locked down in production while remaining easy to use in development.
+
+---
+
+## Quick Reference
+
+| Symptom | Cause | Fix |
+|---------|-------|-----|
+| `authentication_error` | Missing `Authorization: Bearer ...` header | Add `-H "Authorization: Bearer any-token"` to your request |
+| `Unknown provider: xyz` | Provider not enabled or API key missing | Set the provider's env var or enable it in `llmg.toml` |
+| `Authentication failed` (provider_error) | Provider API key is invalid | Check / rotate the provider's API key (e.g., `OPENAI_API_KEY`) |

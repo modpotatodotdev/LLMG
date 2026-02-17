@@ -34,9 +34,12 @@ OPENAI_API_KEY=sk-... llmg-gateway
 
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer any-token" \
   -H "Content-Type: application/json" \
   -d '{"model": "openai/gpt-4", "messages": [{"role": "user", "content": "Hello!"}]}'
 ```
+
+> **Note:** The gateway requires an `Authorization: Bearer <token>` header. The token is not validated in the current release — any value works. See the [Authentication docs](https://modpotatodotdev.github.io/LLMG/gateway/authentication/) for details.
 
 ### Docker
 

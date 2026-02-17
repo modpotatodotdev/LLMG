@@ -16,12 +16,17 @@ OPENAI_API_KEY=sk-... llmg-gateway
 
 ```bash
 curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer any-token" \
   -H "Content-Type: application/json" \
   -d '{
     "model": "openai/gpt-4",
     "messages": [{"role": "user", "content": "Hello!"}]
   }'
 ```
+
+:::tip
+The gateway requires an `Authorization: Bearer <token>` header on all requests. The token value is not validated in the current release — any non-empty value works. See the [Authentication guide](/LLMG/gateway/authentication/) for details.
+:::
 
 The model field uses the `provider/model` format. Some common examples:
 

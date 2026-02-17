@@ -35,6 +35,7 @@ export default defineConfig({
         {
           label: 'Gateway',
           items: [
+            { label: 'Authentication', slug: 'gateway/authentication' },
             { label: 'Configuration', slug: 'gateway/configuration' },
             { label: 'Docker', slug: 'gateway/docker' },
           ],
