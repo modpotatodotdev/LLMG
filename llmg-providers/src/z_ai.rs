@@ -13,6 +13,7 @@ pub struct ZaiClient {
     http_client: reqwest::Client,
     base_url: String,
     credentials: Box<dyn Credentials>,
+    name: String,
 }
 
 impl ZaiClient {
@@ -25,17 +26,26 @@ impl ZaiClient {
             http_client: reqwest::Client::new(),
             base_url: "https://api.z.ai/api/paas/v4".to_string(),
             credentials,
+            name: "z_ai".to_string(),
         }
     }
 
     /// Create a new Z.AI client for the coding plan
     pub fn coding(api_key: impl Into<String>) -> Self {
-        Self::new(api_key).with_base_url("https://api.z.ai/api/coding/paas/v4")
+        Self::new(api_key)
+            .with_base_url("https://api.z.ai/api/coding/paas/v4")
+            .with_name("z_ai_coding")
     }
 
     /// Create with custom base URL
     pub fn with_base_url(mut self, url: impl Into<String>) -> Self {
         self.base_url = url.into();
+        self
+    }
+
+    /// Create with custom name
+    pub fn with_name(mut self, name: impl Into<String>) -> Self {
+        self.name = name.into();
         self
     }
 
@@ -220,7 +230,7 @@ impl Provider for ZaiClient {
     }
 
     fn provider_name(&self) -> &'static str {
-        "zai"
+        Box::leak(self.name.clone().into_boxed_str())
     }
 }
 
