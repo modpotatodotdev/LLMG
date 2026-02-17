@@ -1,0 +1,435 @@
+---
+title: Deployment
+description: Production deployment guide for the LLMG gateway.
+---
+
+This guide covers deploying the LLMG gateway to production using Docker Compose, Kubernetes, and environment-specific configurations.
+
+## Docker Compose
+
+A complete `docker-compose.yml` for production deployment:
+
+```yaml
+version: '3.8'
+
+services:
+  llmg:
+    image: ghcr.io/modpotatodotdev/llmg:latest
+    ports:
+      - "8080:8080"
+    environment:
+      # Required: At least one provider API key
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      
+      # Optional: Additional providers
+      - MISTRAL_API_KEY=${MISTRAL_API_KEY}
+      - COHERE_API_KEY=${COHERE_API_KEY}
+      - DEEPSEEK_API_KEY=${DEEPSEEK_API_KEY}
+      
+      # Server configuration
+      - LLMG_PORT=8080
+      - LLMG_HOST=0.0.0.0
+      - LLMG_LOG_LEVEL=info
+      
+      # Optional: Enable CORS for browser clients
+      - LLMG_CORS=true
+    volumes:
+      # Optional: Mount custom config file
+      - ./llmg.toml:/app/llmg.toml:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          cpus: '2.0'
+          memory: 512M
+        reservations:
+          cpus: '0.5'
+          memory: 128M
+```
+
+Create a `.env` file in the same directory:
+
+```bash
+# .env - NEVER commit this file to version control
+OPENAI_API_KEY=sk-your-openai-key-here
+ANTHROPIC_API_KEY=sk-ant-your-anthropic-key-here
+GROQ_API_KEY=gsk_your_groq_key_here
+```
+
+Deploy with:
+
+```bash
+docker-compose up -d
+```
+
+## Environment Variables
+
+### Server Configuration
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLMG_PORT` | `8080` | Server port |
+| `LLMG_HOST` | `0.0.0.0` | Bind address (`127.0.0.1` for local-only) |
+| `LLMG_LOG_LEVEL` | `info` | Log level: `error`, `warn`, `info`, `debug`, `trace` |
+| `LLMG_CORS` | `false` | Enable CORS headers |
+
+### Provider API Keys
+
+Set the API key for each provider you want to enable. The gateway auto-discovers providers based on which environment variables are present.
+
+| Variable | Provider |
+|----------|----------|
+| `OPENAI_API_KEY` | OpenAI |
+| `ANTHROPIC_API_KEY` | Anthropic |
+| `GROQ_API_KEY` | Groq |
+| `MISTRAL_API_KEY` | Mistral |
+| `COHERE_API_KEY` | Cohere |
+| `DEEPSEEK_API_KEY` | DeepSeek |
+| `OPENROUTER_API_KEY` | OpenRouter |
+| `XAI_API_KEY` | xAI (Grok) |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI |
+
+See the [full provider list](/LLMG/providers/all/) for all supported providers.
+
+### Security Best Practices
+
+- Store API keys in environment variables or a secrets manager
+- Never commit `.env` files to version control
+- Use different API keys for different environments (dev/staging/prod)
+- Rotate keys regularly
+- Restrict API key permissions at the provider level when possible
+
+## Configuration File
+
+For complex deployments, create an `llmg.toml` file:
+
+```toml
+[server]
+port = 8080
+host = "0.0.0.0"
+timeout = 60
+cors = true
+
+[logging]
+level = "info"
+verbose = false
+
+[providers.openai]
+enabled = true
+api_key = "${OPENAI_API_KEY}"
+default_model = "gpt-4"
+
+[providers.anthropic]
+enabled = true
+api_key = "${ANTHROPIC_API_KEY}"
+default_model = "claude-3-opus-20240229"
+
+[aliases]
+gpt-4 = "openai/gpt-4"
+claude = "anthropic/claude-3-opus-20240229"
+```
+
+Mount the config file in Docker Compose:
+
+```yaml
+volumes:
+  - ./llmg.toml:/app/llmg.toml:ro
+```
+
+## Rate Limiting
+
+Configure rate limiting to protect your gateway and providers:
+
+### Environment Variables
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLMG_RATE_LIMIT_ENABLED` | `false` | Enable rate limiting |
+| `LLMG_RATE_LIMIT_RPS` | `0` | Global requests per second (0 = unlimited) |
+| `LLMG_RATE_LIMIT_BURST` | `100` | Global burst capacity |
+
+### Config File
+
+```toml
+[rate_limit]
+enabled = true
+requests_per_second = 100
+burst_capacity = 200
+
+# Per-provider limits
+[rate_limit.providers.openai]
+requests_per_second = 50
+burst_capacity = 100
+
+[rate_limit.providers.anthropic]
+requests_per_second = 30
+burst_capacity = 60
+```
+
+When rate limits are exceeded, the gateway returns HTTP 429 with a `Retry-After` header.
+
+## Kubernetes
+
+### Basic Deployment
+
+```yaml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: llmg-gateway
+  labels:
+    app: llmg-gateway
+spec:
+  replicas: 3
+  selector:
+    matchLabels:
+      app: llmg-gateway
+  template:
+    metadata:
+      labels:
+        app: llmg-gateway
+    spec:
+      containers:
+      - name: llmg
+        image: ghcr.io/modpotatodotdev/llmg:latest
+        ports:
+        - containerPort: 8080
+        env:
+        - name: OPENAI_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llmg-secrets
+              key: openai-api-key
+        - name: ANTHROPIC_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: llmg-secrets
+              key: anthropic-api-key
+        - name: LLMG_LOG_LEVEL
+          value: "info"
+        resources:
+          requests:
+            memory: "128Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 10
+          periodSeconds: 30
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8080
+          initialDelaySeconds: 5
+          periodSeconds: 10
+```
+
+### Service
+
+```yaml
+apiVersion: v1
+kind: Service
+metadata:
+  name: llmg-gateway
+spec:
+  selector:
+    app: llmg-gateway
+  ports:
+  - port: 80
+    targetPort: 8080
+  type: ClusterIP
+```
+
+### Secrets
+
+Create secrets using kubectl:
+
+```bash
+kubectl create secret generic llmg-secrets \
+  --from-literal=openai-api-key=sk-your-key \
+  --from-literal=anthropic-api-key=sk-ant-your-key
+```
+
+Or use a secrets manifest:
+
+```yaml
+apiVersion: v1
+kind: Secret
+metadata:
+  name: llmg-secrets
+type: Opaque
+stringData:
+  openai-api-key: sk-your-key-here
+  anthropic-api-key: sk-ant-your-key-here
+```
+
+### Horizontal Pod Autoscaler
+
+```yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: llmg-gateway-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: llmg-gateway
+  minReplicas: 2
+  maxReplicas: 10
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        averageUtilization: 70
+  - type: Resource
+    resource:
+      name: memory
+      target:
+        type: Utilization
+        averageUtilization: 80
+```
+
+### Ingress (NGINX)
+
+```yaml
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: llmg-gateway-ingress
+  annotations:
+    nginx.ingress.kubernetes.io/rate-limit: "100"
+    nginx.ingress.kubernetes.io/rate-limit-window: "1m"
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+spec:
+  tls:
+  - hosts:
+    - llmg.yourdomain.com
+    secretName: llmg-tls
+  rules:
+  - host: llmg.yourdomain.com
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: llmg-gateway
+            port:
+              number: 80
+```
+
+## Health Checks
+
+The gateway provides a health endpoint at `/health`:
+
+```bash
+curl http://localhost:8080/health
+```
+
+Returns HTTP 200 with JSON response:
+
+```json
+{
+  "status": "healthy",
+  "version": "0.1.0"
+}
+```
+
+Use this for load balancer health checks and monitoring.
+
+## Monitoring
+
+### Prometheus Metrics
+
+The gateway exposes Prometheus metrics at `/metrics`:
+
+```bash
+curl http://localhost:8080/metrics
+```
+
+Key metrics include:
+- `llmg_requests_total` - Total requests by provider and status
+- `llmg_request_duration_seconds` - Request latency histogram
+- `llmg_active_connections` - Current active connections
+
+### Grafana Dashboard
+
+Import the following dashboard JSON to monitor your gateway:
+
+```json
+{
+  "dashboard": {
+    "title": "LLMG Gateway",
+    "panels": [
+      {
+        "title": "Requests/sec",
+        "targets": [
+          {
+            "expr": "rate(llmg_requests_total[5m])"
+          }
+        ]
+      }
+    ]
+  }
+}
+```
+
+## Production Checklist
+
+- [ ] API keys stored securely (secrets manager, not in repo)
+- [ ] Rate limiting enabled
+- [ ] Health checks configured
+- [ ] Logging level set appropriately (`info` or `warn`)
+- [ ] Resource limits defined (CPU/memory)
+- [ ] TLS/HTTPS enabled
+- [ ] Monitoring and alerting configured
+- [ ] Backup strategy for configuration
+- [ ] Disaster recovery plan documented
+
+## Troubleshooting
+
+### Gateway won't start
+
+Check logs:
+```bash
+docker logs <container-id>
+```
+
+Common issues:
+- Missing API keys (at least one provider required)
+- Port already in use
+- Invalid configuration file syntax
+
+### Requests failing
+
+Verify:
+- API keys are valid and have quota
+- Provider is enabled in configuration
+- Network connectivity to provider APIs
+
+### High memory usage
+
+- Reduce `burst_capacity` in rate limiting
+- Lower max request size limits
+- Monitor for memory leaks with profiling
+
+### Connection timeouts
+
+- Increase `timeout` in server configuration
+- Check provider API status
+- Verify network policies (Kubernetes)

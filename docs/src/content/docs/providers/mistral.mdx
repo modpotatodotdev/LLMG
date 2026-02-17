@@ -1,0 +1,35 @@
+---
+title: Mistral
+description: Use Mistral AI models through LLMG.
+---
+
+## Configuration
+
+| Variable | Required |
+|----------|----------|
+| `MISTRAL_API_KEY` | Yes |
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "mistral/mistral-large", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Library
+
+```rust
+use llmg_providers::mistral::MistralClient;
+use llmg_core::provider::Provider;
+
+let client = MistralClient::from_env()?;
+```
+
+## Features
+
+- Chat completions
+- Embeddings
+- Mistral-native API format

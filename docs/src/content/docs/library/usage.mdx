@@ -1,0 +1,88 @@
+---
+title: Library Usage
+description: Use LLMG as a Rust library in your applications.
+---
+
+## Setup
+
+```toml
+[dependencies]
+llmg-core = "0.1"
+llmg-providers = { version = "0.1", features = ["openai", "anthropic"] }
+tokio = { version = "1", features = ["full"] }
+```
+
+## Basic Example
+
+```rust
+use llmg_providers::openai::OpenAiClient;
+use llmg_core::provider::Provider;
+use llmg_core::types::{ChatCompletionRequest, Message};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = OpenAiClient::from_env()?;
+
+    let request = ChatCompletionRequest {
+        model: "gpt-4".to_string(),
+        messages: vec![Message::User {
+            content: "Hello!".to_string(),
+            name: None,
+        }],
+        ..Default::default()
+    };
+
+    let response = client.chat_completion(request).await?;
+    println!("{:?}", response);
+    Ok(())
+}
+```
+
+## Provider Registry
+
+Use `ProviderRegistry` to manage multiple providers:
+
+```rust
+use llmg_core::provider::ProviderRegistry;
+use llmg_providers::openai::OpenAiClient;
+use llmg_providers::anthropic::AnthropicClient;
+
+let mut registry = ProviderRegistry::new();
+registry.register(Box::new(OpenAiClient::from_env()?));
+registry.register(Box::new(AnthropicClient::from_env()?));
+
+// Look up by name
+let provider = registry.get("openai").unwrap();
+```
+
+## Fallback Provider
+
+Chain providers with automatic fallback:
+
+```rust
+use llmg_core::provider::FallbackProvider;
+use llmg_providers::openai::OpenAiClient;
+use llmg_providers::anthropic::AnthropicClient;
+
+let fallback = FallbackProvider::new(vec![
+    Box::new(OpenAiClient::from_env()?),
+    Box::new(AnthropicClient::from_env()?),
+]);
+
+// If OpenAI fails, automatically retries with Anthropic
+let response = fallback.chat_completion(request).await?;
+```
+
+## Embeddings
+
+```rust
+use llmg_core::types::EmbeddingRequest;
+
+let request = EmbeddingRequest {
+    model: "text-embedding-ada-002".to_string(),
+    input: "Hello, world!".to_string(),
+    ..Default::default()
+};
+
+let response = client.embeddings(request).await?;
+```

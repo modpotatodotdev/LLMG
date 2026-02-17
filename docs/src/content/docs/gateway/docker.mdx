@@ -1,0 +1,43 @@
+---
+title: Docker
+description: Run the LLMG gateway with Docker or Docker Compose.
+---
+
+## Docker
+
+```bash
+docker pull ghcr.io/modpotatodotdev/llmg:latest
+
+docker run -p 8080:8080 \
+  -e OPENAI_API_KEY=sk-... \
+  -e ANTHROPIC_API_KEY=sk-ant-... \
+  ghcr.io/modpotatodotdev/llmg:latest
+```
+
+## Docker Compose
+
+```yaml
+services:
+  llmg:
+    image: ghcr.io/modpotatodotdev/llmg:latest
+    ports:
+      - "8080:8080"
+    environment:
+      - OPENAI_API_KEY=${OPENAI_API_KEY}
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY}
+      - LLMG_LOG_LEVEL=info
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 3s
+      retries: 3
+```
+
+## Building Locally
+
+```bash
+docker build -t llmg .
+docker run -p 8080:8080 -e OPENAI_API_KEY=sk-... llmg
+```
+
+The Dockerfile uses a multi-stage build with `rust:1.75-slim` for compilation and `debian:bookworm-slim` for the runtime image.

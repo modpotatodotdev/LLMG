@@ -1,0 +1,38 @@
+---
+title: OpenAI
+description: Use OpenAI models (GPT-4, GPT-3.5) through LLMG.
+---
+
+## Configuration
+
+| Variable | Required |
+|----------|----------|
+| `OPENAI_API_KEY` | Yes |
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openai/gpt-4", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Library
+
+```rust
+use llmg_providers::openai::OpenAiClient;
+use llmg_core::provider::Provider;
+
+let client = OpenAiClient::from_env()?;
+// or
+let client = OpenAiClient::new("sk-...");
+```
+
+## Features
+
+- Chat completions
+- Embeddings
+- SSE streaming
+- Custom base URL (for proxies)

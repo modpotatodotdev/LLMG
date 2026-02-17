@@ -1,0 +1,39 @@
+---
+title: Rig Framework Integration
+description: Use LLMG providers with the Rig agent framework.
+---
+
+LLMG integrates with the [Rig](https://github.com/0xPlaygrounds/rig) agent framework via the `RigAdapter`.
+
+## Setup
+
+```toml
+[dependencies]
+llmg-core = "0.1"
+llmg-providers = { version = "0.1", features = ["openai"] }
+```
+
+## Usage
+
+```rust
+use llmg_core::rig::RigAdapter;
+use llmg_providers::openai::OpenAiClient;
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let openai = OpenAiClient::from_env()?;
+    let adapter = RigAdapter::new(openai, "gpt-4");
+
+    let completion = adapter
+        .completion()
+        .system("You are a helpful assistant")
+        .user("Hello!")
+        .send()
+        .await?;
+
+    println!("{}", completion);
+    Ok(())
+}
+```
+
+The `RigAdapter` wraps any LLMG provider to make it compatible with Rig's `CompletionModel` trait.

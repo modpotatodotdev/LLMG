@@ -1,0 +1,502 @@
+---
+title: Error Handling
+description: Complete reference for LLMG gateway error codes and responses.
+---
+
+This document describes all error responses returned by the LLMG gateway, their HTTP status codes, and how to handle them.
+
+## Error Response Format
+
+All errors follow a consistent JSON format:
+
+```json
+{
+  "error": {
+    "type": "error_type",
+    "message": "Human-readable description",
+    "code": "ERROR_CODE"
+  }
+}
+```
+
+## Error Types
+
+| Error Type | HTTP Status | Description |
+|------------|-------------|-------------|
+| `authentication_error` | 401 | Invalid or missing API key |
+| `rate_limit_error` | 429 | Rate limit exceeded |
+| `invalid_request_error` | 400 | Malformed request or invalid parameters |
+| `not_found_error` | 404 | Requested resource does not exist |
+| `provider_error` | 502 | Upstream provider returned an error |
+| `timeout_error` | 504 | Request timed out |
+| `internal_error` | 500 | Unexpected server error |
+| `unsupported_feature` | 501 | Feature not supported by the provider |
+
+## Detailed Error Reference
+
+### Authentication Error (401)
+
+Returned when the API key is missing, invalid, or expired.
+
+**Example:**
+```json
+{
+  "error": {
+    "type": "authentication_error",
+    "message": "Authentication failed",
+    "code": "AUTH_ERROR"
+  }
+}
+```
+
+**Common Causes:**
+- Missing `Authorization` header
+- Invalid API key format
+- Expired or revoked API key
+- Provider API key not configured
+
+**Resolution:**
+```bash
+# Verify your API key is set
+echo $OPENAI_API_KEY
+
+# Include in request
+curl -H "Authorization: Bearer $OPENAI_API_KEY" ...
+```
+
+---
+
+### Rate Limit Error (429)
+
+Returned when request limits are exceeded for the provider or gateway.
+
+**Example:**
+```json
+{
+  "error": {
+    "type": "rate_limit_error",
+    "message": "Rate limit exceeded",
+    "code": "RATE_LIMIT_ERROR",
+    "retry_after": 60
+  }
+}
+```
+
+**Common Causes:**
+- Exceeded provider's requests-per-minute limit
+- Exceeded gateway's configured rate limit
+- Token-based rate limiting (input/output tokens)
+
+**Resolution:**
+- Implement exponential backoff
+- Check the `Retry-After` header
+- Reduce request frequency
+- Upgrade your provider plan for higher limits
+
+**Retry Logic Example:**
+```python
+import time
+import random
+
+def retry_with_backoff(func, max_retries=5):
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except RateLimitError as e:
+            if attempt == max_retries - 1:
+                raise
+            # Exponential backoff with jitter
+            sleep_time = (2 ** attempt) + random.uniform(0, 1)
+            time.sleep(sleep_time)
+```
+
+---
+
+### Invalid Request Error (400)
+
+Returned when the request is malformed or contains invalid parameters.
+
+**Example - Missing Required Field:**
+```json
+{
+  "error": {
+    "type": "invalid_request_error",
+    "message": "Invalid request: missing required field 'messages'",
+    "code": "INVALID_REQUEST"
+  }
+}
+```
+
+**Example - Invalid Model:**
+```json
+{
+  "error": {
+    "type": "invalid_request_error",
+    "message": "Invalid request: model 'gpt-99' not found",
+    "code": "INVALID_REQUEST"
+  }
+}
+```
+
+**Example - Invalid Header:**
+```json
+{
+  "error": {
+    "type": "invalid_request_error",
+    "message": "Invalid request: Invalid header name: ...",
+    "code": "INVALID_REQUEST"
+  }
+}
+```
+
+**Common Causes:**
+- Missing required fields (`model`, `messages`)
+- Invalid JSON syntax
+- Unsupported model name
+- Invalid parameter types or values
+- Malformed headers
+
+**Resolution:**
+- Validate JSON before sending
+- Check the [API reference](/LLMG/getting-started/quickstart/) for required fields
+- Verify model name is available: `GET /v1/models`
+
+---
+
+### Not Found Error (404)
+
+Returned when the requested resource does not exist.
+
+**Example:**
+```json
+{
+  "error": {
+    "type": "not_found_error",
+    "message": "Resource not found",
+    "code": "NOT_FOUND"
+  }
+}
+```
+
+**Common Causes:**
+- Invalid endpoint URL
+- Non-existent model
+- Deleted or unavailable resource
+
+**Resolution:**
+- Verify the endpoint URL
+- Check available models with `GET /v1/models`
+
+---
+
+### Provider Error (502)
+
+Returned when the upstream LLM provider returns an error.
+
+**Example:**
+```json
+{
+  "error": {
+    "type": "provider_error",
+    "message": "Provider error: OpenAI API returned 500",
+    "code": "PROVIDER_ERROR",
+    "provider": "openai"
+  }
+}
+```
+
+**Example - Provider API Error:**
+```json
+{
+  "error": {
+    "type": "provider_error",
+    "message": "API error: 400 - context length exceeded",
+    "code": "API_ERROR",
+    "provider": "anthropic",
+    "status": 400
+  }
+}
+```
+
+**Common Causes:**
+- Provider service outage
+- Context length exceeded
+- Provider-specific validation errors
+- Quota exceeded at provider level
+
+**Resolution:**
+- Check provider status page
+- Reduce context window (fewer messages or shorter content)
+- Verify provider API key has quota remaining
+- Try a fallback provider
+
+---
+
+### Timeout Error (504)
+
+Returned when a request exceeds the configured timeout.
+
+**Example:**
+```json
+{
+  "error": {
+    "type": "timeout_error",
+    "message": "Request timed out",
+    "code": "TIMEOUT"
+  }
+}
+```
+
+**Common Causes:**
+- Complex request requiring long processing
+- Provider experiencing high latency
+- Network connectivity issues
+- Timeout configured too low
+
+**Resolution:**
+- Increase timeout in configuration (`timeout` in `llmg.toml`)
+- Implement client-side timeouts with retry
+- For long requests, consider streaming responses
+- Check provider status for latency issues
+
+**Configuration:**
+```toml
+[server]
+timeout = 120  # Increase from default 60 seconds
+```
+
+---
+
+### Internal Error (500)
+
+Returned when an unexpected server error occurs.
+
+**Example:**
+```json
+{
+  "error": {
+    "type": "internal_error",
+    "message": "Internal provider error: serialization failed",
+    "code": "INTERNAL_ERROR"
+  }
+}
+```
+
+**Example - Serialization Error:**
+```json
+{
+  "error": {
+    "type": "internal_error",
+    "message": "Serialization error: invalid unicode",
+    "code": "SERIALIZATION_ERROR"
+  }
+}
+```
+
+**Common Causes:**
+- Unexpected server condition
+- Serialization/deserialization failure
+- Bug in gateway code
+
+**Resolution:**
+- Retry the request (these are typically transient)
+- Check gateway logs for details
+- Report persistent issues to the LLMG team
+
+---
+
+### Unsupported Feature Error (501)
+
+Returned when a feature is not supported by the selected provider.
+
+**Example:**
+```json
+{
+  "error": {
+    "type": "unsupported_feature",
+    "message": "Feature not supported by this provider",
+    "code": "UNSUPPORTED_FEATURE"
+  }
+}
+```
+
+**Common Causes:**
+- Streaming not supported by provider
+- Embeddings not available for the provider
+- `list_models()` not implemented
+
+**Resolution:**
+- Use a different provider that supports the feature
+- Check provider documentation for supported features
+- Use fallback provider configuration
+
+---
+
+## HTTP Error Mapping
+
+| LlmError Variant | HTTP Status | Error Type |
+|------------------|-------------|------------|
+| `HttpError` | 502 | `provider_error` |
+| `ApiError` | varies* | `provider_error` |
+| `AuthError` | 401 | `authentication_error` |
+| `RateLimitError` | 429 | `rate_limit_error` |
+| `InvalidRequest` | 400 | `invalid_request_error` |
+| `ProviderError` | 502 | `provider_error` |
+| `SerializationError` | 500 | `internal_error` |
+| `Unknown` | 500 | `internal_error` |
+| `UnsupportedFeature` | 501 | `unsupported_feature` |
+| `NotFound` | 404 | `not_found_error` |
+| `InternalError` | 500 | `internal_error` |
+| `Timeout` | 504 | `timeout_error` |
+
+*ApiError passes through the provider's HTTP status code (e.g., 400 for bad request at provider)
+
+---
+
+## Error Handling Best Practices
+
+### 1. Implement Retry Logic
+
+```python
+from tenacity import retry, stop_after_attempt, wait_exponential
+
+@retry(
+    stop=stop_after_attempt(3),
+    wait=wait_exponential(multiplier=1, min=4, max=10),
+    retry=retry_if_exception_type((RateLimitError, TimeoutError))
+)
+def call_llmg_api(request):
+    return client.chat.completions.create(**request)
+```
+
+### 2. Handle Specific Errors
+
+```python
+try:
+    response = client.chat.completions.create(**request)
+except AuthenticationError:
+    # Refresh API key or alert admin
+    refresh_api_key()
+except RateLimitError as e:
+    # Backoff and retry
+    time.sleep(e.retry_after)
+    retry_request()
+except InvalidRequestError as e:
+    # Fix request and don't retry
+    log_error(e)
+    raise
+```
+
+### 3. Use Fallback Providers
+
+Configure the gateway with multiple providers to handle provider-specific errors:
+
+```toml
+[providers]
+primary = "openai"
+fallback = ["anthropic", "groq"]
+```
+
+### 4. Monitor Error Rates
+
+Track error types in your monitoring:
+
+```python
+# Prometheus metrics
+error_counter = Counter('llmg_errors_total', 'Total errors', ['type'])
+
+def handle_error(error):
+    error_counter.labels(type=error.type).inc()
+    # ... handle error
+```
+
+### 5. Validate Before Sending
+
+```python
+import jsonschema
+
+# Validate request against schema before sending
+schema = {
+    "type": "object",
+    "required": ["model", "messages"],
+    "properties": {
+        "model": {"type": "string"},
+        "messages": {"type": "array"}
+    }
+}
+
+def validate_request(request):
+    jsonschema.validate(request, schema)
+```
+
+---
+
+## Streaming Error Handling
+
+When using streaming responses, errors may occur mid-stream:
+
+```python
+import openai
+
+client = openai.OpenAI(base_url="http://localhost:8080/v1")
+
+try:
+    stream = client.chat.completions.create(
+        model="openai/gpt-4",
+        messages=[{"role": "user", "content": "Hello"}],
+        stream=True
+    )
+    
+    for chunk in stream:
+        if chunk.choices[0].delta.content:
+            print(chunk.choices[0].delta.content, end="")
+            
+except openai.RateLimitError as e:
+    # Handle rate limit mid-stream
+    print(f"Rate limited. Retry after: {e.headers.get('retry-after')}")
+except openai.APIError as e:
+    # Handle other API errors
+    print(f"API error: {e.message}")
+```
+
+---
+
+## Debugging Errors
+
+### Enable Debug Logging
+
+```bash
+LLMG_LOG_LEVEL=debug ./llmg-gateway
+```
+
+### Check Provider Response
+
+```bash
+# Verbose curl to see full request/response
+curl -v -X POST http://localhost:8080/v1/chat/completions \
+  -H "Authorization: Bearer $OPENAI_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openai/gpt-4", "messages": [{"role": "user", "content": "Hi"}]}'
+```
+
+### Common Debugging Steps
+
+1. **Check gateway health**: `GET /health`
+2. **List available models**: `GET /v1/models`
+3. **Verify environment variables**: All `*_API_KEY` vars set
+4. **Check provider status**: Visit provider's status page
+5. **Review gateway logs**: Look for detailed error traces
+
+---
+
+## Getting Help
+
+If you encounter persistent errors:
+
+1. Check the [troubleshooting guide](/LLMG/gateway/deployment/#troubleshooting)
+2. Search [existing issues](https://github.com/modpotatodotdev/LLMG/issues)
+3. Create a new issue with:
+   - Error message and code
+   - Request details (without API keys)
+   - Gateway version (`GET /health`)
+   - Provider being used

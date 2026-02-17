@@ -1,0 +1,106 @@
+[package]
+name = "llmg-providers"
+version.workspace = true
+edition.workspace = true
+authors.workspace = true
+license.workspace = true
+repository.workspace = true
+readme.workspace = true
+keywords.workspace = true
+categories.workspace = true
+description = "Provider implementations for LLMG - LLM Gateway"
+
+[dependencies]
+llmg-core = { path = "../llmg-core", version = "0.1.0" }
+reqwest = { version = "0.12", features = ["json", "stream"] }
+async-trait = "0.1"
+serde_json = { workspace = true }
+serde = { workspace = true }
+chrono = { workspace = true }
+uuid = { version = "1.0", features = ["v4"] }
+tokio = { workspace = true }
+tokio-stream = "0.1"
+futures = "0.3"
+rand = "0.8"
+base64 = "0.22"
+sha2 = "0.10"
+urlencoding = "2.1"
+dirs = "5.0"
+
+[features]
+default = ["openai"]
+openai = []
+anthropic = []
+azure = []
+azure_ai = []
+cohere = []
+ollama = []
+openrouter = []
+github_copilot = []
+antigravity = []
+anyscale = []
+groq = []
+deepinfra = []
+together_ai = []
+fireworks_ai = []
+cerebras = []
+sambanova = []
+friendliai = []
+nscale = []
+hyperbolic = []
+featherless_ai = []
+apertis_ai = []
+nano_gpt = []
+poe = []
+chutes = []
+comet = []
+aiml = []
+publicai = []
+synthetic = []
+v0 = []
+jina = []
+aleph_alpha = []
+minimax = []
+meta_llama = []
+xinference = []
+xai = []
+ai21 = []
+deepgram = []
+mistral = []
+deepseek = []
+octoai = []
+perplexity = []
+voyageai = []
+volcano = []
+infinity = []
+milvus = []
+compactifai = []
+vllm = []
+custom_llm_server = []
+lm_studio = []
+llamafile = []
+triton = []
+petals = []
+oobabooga = []
+docker_runner = []
+aws_sagemaker = []
+bedrock = []
+watsonx = []
+vertex_ai = []
+heroku = []
+huggingface = []
+langgraph = []
+fal_ai = []
+helicone = []
+litellm_proxy = []
+pydantic_ai_agent = []
+elevenlabs = []
+firecrawl = []
+polly = []
+runway = []
+stability = []
+integration = []
+
+[dev-dependencies]
+tokio = { version = "1.0", features = ["full"] }
+rig-core = "0.29"

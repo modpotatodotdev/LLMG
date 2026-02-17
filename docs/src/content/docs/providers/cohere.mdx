@@ -1,0 +1,34 @@
+---
+title: Cohere
+description: Use Cohere models (Command-R) through LLMG.
+---
+
+## Configuration
+
+| Variable | Required |
+|----------|----------|
+| `COHERE_API_KEY` | Yes |
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "cohere/command-r-plus", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Library
+
+```rust
+use llmg_providers::cohere::CohereClient;
+use llmg_core::provider::Provider;
+
+let client = CohereClient::from_env()?;
+```
+
+## Features
+
+- Chat completions (auto-converts to Cohere format)
+- Embeddings

@@ -1,0 +1,37 @@
+---
+title: Groq
+description: Use Groq's ultra-fast inference through LLMG.
+---
+
+## Configuration
+
+| Variable | Required |
+|----------|----------|
+| `GROQ_API_KEY` | Yes |
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "groq/llama3-70b-8192", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Library
+
+```rust
+use llmg_providers::groq::GroqClient;
+use llmg_core::provider::Provider;
+
+let client = GroqClient::from_env()?;
+// or
+let client = GroqClient::new("gsk_...");
+```
+
+## Features
+
+- Chat completions (OpenAI-compatible)
+- Embeddings
+- Ultra-low latency inference

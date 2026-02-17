@@ -1,0 +1,37 @@
+---
+title: Azure OpenAI
+description: Use Azure OpenAI Service through LLMG.
+---
+
+## Configuration
+
+| Variable | Required |
+|----------|----------|
+| `AZURE_OPENAI_API_KEY` | Yes |
+| `AZURE_OPENAI_ENDPOINT` | Yes |
+| `AZURE_OPENAI_DEPLOYMENT` | Yes |
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "azure/gpt-4", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Library
+
+```rust
+use llmg_providers::azure::AzureOpenAiClient;
+use llmg_core::provider::Provider;
+
+let client = AzureOpenAiClient::from_env()?;
+```
+
+## Features
+
+- Chat completions
+- Embeddings
+- Azure-specific authentication

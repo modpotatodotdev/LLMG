@@ -1,0 +1,38 @@
+---
+title: OpenRouter
+description: Access hundreds of models via OpenRouter through LLMG.
+---
+
+## Configuration
+
+| Variable | Required |
+|----------|----------|
+| `OPENROUTER_API_KEY` | Yes |
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "openrouter/openai/gpt-4", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+Note the nested routing format: `openrouter/provider/model`.
+
+### Library
+
+```rust
+use llmg_providers::openrouter::OpenRouterClient;
+use llmg_core::provider::Provider;
+
+let client = OpenRouterClient::from_env()?;
+```
+
+## Features
+
+- Chat completions (OpenAI-compatible)
+- Embeddings
+- Access to 100+ models from multiple providers
+- Nested model routing (`openrouter/openai/gpt-4`)

@@ -1,0 +1,37 @@
+---
+title: AWS Bedrock
+description: Use AWS Bedrock models through LLMG.
+---
+
+## Configuration
+
+| Variable | Required |
+|----------|----------|
+| `AWS_ACCESS_KEY_ID` | Yes |
+| `AWS_SECRET_ACCESS_KEY` | Yes |
+| `AWS_REGION` | Yes |
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "bedrock/anthropic.claude-3-opus-20240229-v1:0", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Library
+
+```rust
+use llmg_providers::bedrock::BedrockClient;
+use llmg_core::provider::Provider;
+
+let client = BedrockClient::from_env()?;
+```
+
+## Features
+
+- Chat completions
+- Multiple model providers via Bedrock
+- AWS SigV4 authentication

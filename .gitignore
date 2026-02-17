@@ -1,0 +1,10 @@
+target/
+*.swp
+*.swo
+.DS_Store
+.env
+
+# Docs
+docs/node_modules/
+docs/dist/
+docs/.astro/

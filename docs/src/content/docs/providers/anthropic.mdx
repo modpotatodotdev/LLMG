@@ -1,0 +1,41 @@
+---
+title: Anthropic
+description: Use Anthropic Claude models through LLMG.
+---
+
+## Configuration
+
+| Variable | Required |
+|----------|----------|
+| `ANTHROPIC_API_KEY` | Yes |
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "anthropic/claude-3-opus-20240229", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Library
+
+```rust
+use llmg_providers::anthropic::AnthropicClient;
+use llmg_core::provider::Provider;
+
+let client = AnthropicClient::from_env()?;
+// or
+let client = AnthropicClient::new("sk-ant-...");
+```
+
+## Features
+
+- Chat completions (auto-converts to Anthropic format)
+- Custom base URL
+- Anthropic API version header
+
+## Notes
+
+LLMG automatically converts between the OpenAI message format and Anthropic's native format. System messages are extracted and sent via the `system` parameter.

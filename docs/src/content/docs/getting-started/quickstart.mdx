@@ -1,0 +1,57 @@
+---
+title: Quick Start
+description: Get up and running with LLMG in under a minute.
+---
+
+## Start the Gateway
+
+```bash
+OPENAI_API_KEY=sk-... cargo run --bin llmg-gateway
+```
+
+## Send a Request
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "openai/gpt-4",
+    "messages": [{"role": "user", "content": "Hello!"}]
+  }'
+```
+
+The model field uses the `provider/model` format. Some common examples:
+
+| Model ID | Provider |
+|----------|----------|
+| `openai/gpt-4` | OpenAI |
+| `anthropic/claude-3-opus-20240229` | Anthropic |
+| `groq/llama3-70b-8192` | Groq |
+| `ollama/llama3` | Ollama (local) |
+| `deepseek/deepseek-chat` | DeepSeek |
+
+## Use as a Library
+
+```rust
+use llmg_providers::openai::OpenAiClient;
+use llmg_core::provider::Provider;
+use llmg_core::types::{ChatCompletionRequest, Message};
+
+#[tokio::main]
+async fn main() -> Result<(), Box<dyn std::error::Error>> {
+    let client = OpenAiClient::from_env()?;
+
+    let request = ChatCompletionRequest {
+        model: "gpt-4".to_string(),
+        messages: vec![Message::User {
+            content: "Hello!".to_string(),
+            name: None,
+        }],
+        ..Default::default()
+    };
+
+    let response = client.chat_completion(request).await?;
+    println!("{:?}", response);
+    Ok(())
+}
+```

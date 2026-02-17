@@ -1,0 +1,37 @@
+---
+title: Installation
+description: How to install and build LLMG as a library or gateway.
+---
+
+## As a Library
+
+Add LLMG to your `Cargo.toml`:
+
+```toml
+[dependencies]
+llmg-core = "0.1"
+llmg-providers = { version = "0.1", features = ["openai", "anthropic"] }
+```
+
+Enable only the provider features you need to keep compile times low.
+
+## As a Gateway
+
+### From Source
+
+```bash
+git clone https://github.com/modpotatodotdev/LLMG.git
+cd LLMG
+cargo build --release --bin llmg-gateway
+```
+
+The binary will be at `target/release/llmg-gateway`.
+
+### Docker
+
+```bash
+docker pull ghcr.io/modpotatodotdev/llmg:latest
+docker run -p 8080:8080 -e OPENAI_API_KEY=sk-... ghcr.io/modpotatodotdev/llmg:latest
+```
+
+See the [Docker guide](/LLMG/gateway/docker/) for full configuration.

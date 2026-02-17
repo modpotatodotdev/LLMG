@@ -1,0 +1,39 @@
+---
+title: Ollama
+description: Use locally running Ollama models through LLMG.
+---
+
+## Configuration
+
+| Variable | Default | Required |
+|----------|---------|----------|
+| `OLLAMA_BASE_URL` | `http://localhost:11434` | No |
+
+No API key is required — Ollama runs locally.
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "ollama/llama3", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Library
+
+```rust
+use llmg_providers::ollama::OllamaClient;
+use llmg_core::provider::Provider;
+
+let client = OllamaClient::from_env();
+// or
+let client = OllamaClient::new().with_base_url("http://my-server:11434");
+```
+
+## Features
+
+- Chat completions (auto-converts to Ollama format)
+- Embeddings
+- Custom base URL for remote Ollama instances

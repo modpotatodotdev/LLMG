@@ -1,0 +1,30 @@
+---
+title: Introduction
+description: LLMG is a high-performance Rust LLM Gateway providing a unified OpenAI-compatible API for 70+ LLM providers.
+---
+
+# LLMG — LLM Gateway
+
+**LLMG** is a high-performance LLM gateway written in Rust. It provides a single, unified OpenAI-compatible API that routes requests to **70+ LLM providers** including OpenAI, Anthropic, Azure, Google Vertex AI, AWS Bedrock, Groq, Mistral, and many more.
+
+## Why LLMG?
+
+- **Single API** — Use one OpenAI-compatible endpoint for every provider.
+- **Written in Rust** — Fast, safe, and low resource usage.
+- **70+ Providers** — OpenAI, Anthropic, Azure, Groq, Mistral, Cohere, DeepSeek, Ollama, OpenRouter, and dozens more.
+- **Library + Gateway** — Use it as a Rust library (`llmg-providers`) or deploy the HTTP gateway (`llmg-gateway`).
+- **Feature-Gated** — Compile only the providers you need.
+- **SSE Streaming** — Real-time streaming responses across all providers.
+- **Rig Framework** — Drop-in integration with the [Rig](https://github.com/0xPlaygrounds/rig) agent framework.
+
+## Architecture
+
+LLMG is split into three crates:
+
+| Crate | Purpose |
+|-------|---------|
+| `llmg-core` | Shared types, traits, and error handling |
+| `llmg-providers` | Provider implementations (feature-gated) |
+| `llmg-gateway` | HTTP gateway server (Axum-based) |
+
+Requests use the `provider/model` routing format (e.g. `openai/gpt-4`, `anthropic/claude-3-opus-20240229`). The gateway parses the prefix, selects the right provider, and forwards the request.

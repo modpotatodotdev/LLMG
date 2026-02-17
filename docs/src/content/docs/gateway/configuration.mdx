@@ -1,0 +1,68 @@
+---
+title: Configuration
+description: Configure the LLMG gateway via environment variables or config file.
+---
+
+## Environment Variables
+
+### Server
+
+| Variable | Default | Description |
+|----------|---------|-------------|
+| `LLMG_PORT` | `8080` | Server port |
+| `LLMG_HOST` | `0.0.0.0` | Bind address |
+| `LLMG_LOG_LEVEL` | `info` | Log level |
+
+### Provider API Keys
+
+Set the API key environment variable for each provider you want to use. The gateway auto-discovers providers based on which keys are present.
+
+| Variable | Provider |
+|----------|----------|
+| `OPENAI_API_KEY` | OpenAI |
+| `ANTHROPIC_API_KEY` | Anthropic |
+| `GROQ_API_KEY` | Groq |
+| `MISTRAL_API_KEY` | Mistral |
+| `COHERE_API_KEY` | Cohere |
+| `DEEPSEEK_API_KEY` | DeepSeek |
+| `OPENROUTER_API_KEY` | OpenRouter |
+| `XAI_API_KEY` | xAI (Grok) |
+| `AZURE_OPENAI_API_KEY` | Azure OpenAI |
+| `Z_AI_API_KEY` | Z.AI (GLM) |
+
+See the [full provider list](/LLMG/providers/all/) for all supported environment variables.
+
+## Config File
+
+You can optionally create an `llmg.toml`:
+
+```toml
+[server]
+port = 8080
+host = "0.0.0.0"
+timeout = 60
+cors = true
+
+[providers.openai]
+enabled = true
+api_key = "${OPENAI_API_KEY}"
+default_model = "gpt-4"
+
+[aliases]
+gpt-4 = "openai/gpt-4"
+claude = "anthropic/claude-3-opus-20240229"
+```
+
+## Model Aliases
+
+The gateway supports short aliases that map to full `provider/model` paths. Built-in aliases include:
+
+| Alias | Maps To |
+|-------|---------|
+| `gpt-4` | `openai/gpt-4` |
+| `claude` | `anthropic/claude-3-opus-20240229` |
+| `gemini` | `antigravity/gemini-2.0-flash` |
+| `llama` | `meta_llama/llama-3.1-70b-instruct` |
+| `mistral` | `mistral/mistral-large` |
+| `deepseek` | `deepseek/deepseek-chat` |
+| `groq` | `groq/llama3-70b-8192` |

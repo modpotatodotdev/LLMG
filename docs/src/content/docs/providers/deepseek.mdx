@@ -1,0 +1,34 @@
+---
+title: DeepSeek
+description: Use DeepSeek models through LLMG.
+---
+
+## Configuration
+
+| Variable | Required |
+|----------|----------|
+| `DEEPSEEK_API_KEY` | Yes |
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "deepseek/deepseek-chat", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Library
+
+```rust
+use llmg_providers::deepseek::DeepseekClient;
+use llmg_core::provider::Provider;
+
+let client = DeepseekClient::from_env()?;
+```
+
+## Features
+
+- Chat completions
+- DeepSeek-native API format

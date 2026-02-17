@@ -1,0 +1,101 @@
+---
+title: All Providers
+description: Complete list of all 70+ LLM providers supported by LLMG.
+---
+
+## OpenAI-Compatible
+
+| Provider | Env Variable | Crate Module |
+|----------|-------------|--------------|
+| OpenAI | `OPENAI_API_KEY` | `openai` |
+| Groq | `GROQ_API_KEY` | `groq` |
+| DeepInfra | `DEEPINFRA_API_KEY` | `deepinfra` |
+| Together AI | `TOGETHERAI_API_KEY` | `together_ai` |
+| Fireworks AI | `FIREWORKS_API_KEY` | `fireworks_ai` |
+| Anyscale | `ANYSCALE_API_KEY` | `anyscale` |
+| Perplexity | `PERPLEXITY_API_KEY` | `perplexity` |
+| SambaNova | `SAMBANOVA_API_KEY` | `sambanova` |
+| Cerebras | `CEREBRAS_API_KEY` | `cerebras` |
+| NScale | `NSCALE_API_KEY` | `nscale` |
+| xAI (Grok) | `XAI_API_KEY` | `xai` |
+| Hyperbolic | `HYPERBOLIC_API_KEY` | `hyperbolic` |
+| Featherless AI | `FEATHERLESS_API_KEY` | `featherless_ai` |
+| FriendliAI | `FRIENDLIAI_API_KEY` | `friendliai` |
+| OctoAI | `OCTOAI_API_KEY` | `octoai` |
+| OpenRouter | `OPENROUTER_API_KEY` | `openrouter` |
+| AIML | `AIML_API_KEY` | `aiml` |
+| Chutes | `CHUTES_API_KEY` | `chutes` |
+| NanoGPT | `NANOGPT_API_KEY` | `nano_gpt` |
+| Z.AI | `Z_AI_API_KEY` | `z_ai` |
+| Z.AI Coding | `Z_AI_API_KEY` | `z_ai_coding` |
+
+## Custom API
+
+| Provider | Env Variable | Crate Module |
+|----------|-------------|--------------|
+| Anthropic | `ANTHROPIC_API_KEY` | `anthropic` |
+| Cohere | `COHERE_API_KEY` | `cohere` |
+| Mistral | `MISTRAL_API_KEY` | `mistral` |
+| DeepSeek | `DEEPSEEK_API_KEY` | `deepseek` |
+| AI21 | `AI21_API_KEY` | `ai21` |
+| Aleph Alpha | `ALEPH_ALPHA_API_KEY` | `aleph_alpha` |
+| Meta Llama | `META_LLAMA_API_KEY` | `meta_llama` |
+| MiniMax | `MINIMAX_API_KEY` | `minimax` |
+| Poe | `POE_API_KEY` | `poe` |
+| PublicAI | `PUBLICAI_API_KEY` | `publicai` |
+| Synthetic | `SYNTHETIC_API_KEY` | `synthetic` |
+| V0 | `V0_API_KEY` | `v0` |
+| Volcano | `VOLCANO_API_KEY` | `volcano` |
+| Apertis AI | `APERTIS_API_KEY` | `apertis_ai` |
+| Comet | `COMET_API_KEY` | `comet` |
+| CompactifAI | `COMPACTIFAI_API_KEY` | `compactifai` |
+
+## Self-Hosted / Local
+
+| Provider | Env Variable | Crate Module |
+|----------|-------------|--------------|
+| Ollama | `OLLAMA_BASE_URL` | `ollama` |
+| vLLM | `VLLM_BASE_URL` | `vllm` |
+| LM Studio | `LM_STUDIO_BASE_URL` | `lm_studio` |
+| Llamafile | `LLAMAFILE_BASE_URL` | `llamafile` |
+| Triton | `TRITON_BASE_URL` | `triton` |
+| Petals | `PETALS_BASE_URL` | `petals` |
+| oobabooga | `OOBABOOGA_BASE_URL` | `oobabooga` |
+| Docker Runner | `DOCKER_RUNNER_BASE_URL` | `docker_runner` |
+| XInference | `XINFERENCE_BASE_URL` | `xinference` |
+| Custom LLM Server | `CUSTOM_LLM_SERVER_BASE_URL` | `custom_llm_server` |
+
+## Cloud / Enterprise
+
+| Provider | Env Variables | Crate Module |
+|----------|--------------|--------------|
+| Azure OpenAI | `AZURE_OPENAI_API_KEY`, `AZURE_OPENAI_ENDPOINT`, `AZURE_OPENAI_DEPLOYMENT` | `azure` |
+| Azure AI | `AZURE_AI_API_KEY`, `AZURE_AI_ENDPOINT` | `azure_ai` |
+| AWS Bedrock | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION` | `bedrock` |
+| AWS SageMaker | `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`, `AWS_REGION`, `SAGEMAKER_ENDPOINT` | `aws_sagemaker` |
+| Google Vertex AI | `GOOGLE_API_KEY`, `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_LOCATION` | `vertex_ai` |
+| IBM WatsonX | `WATSONX_API_KEY`, `WATSONX_PROJECT_ID` | `watsonx` |
+| Heroku | `HEROKU_API_KEY` | `heroku` |
+| HuggingFace | `HF_TOKEN` | `huggingface` |
+
+## Specialized
+
+| Provider | Env Variable | Crate Module |
+|----------|-------------|--------------|
+| GitHub Copilot | `GITHUB_COPILOT_TOKEN` | `github_copilot` |
+| Google Antigravity | `GOOGLE_API_KEY` | `antigravity` |
+| LangGraph | `LANGGRAPH_API_KEY` | `langgraph` |
+| Pydantic AI | `PYDANTIC_AI_API_KEY` | `pydantic_ai_agent` |
+| LiteLLM Proxy | `LITELLM_BASE_URL` | `litellm_proxy` |
+| Helicone | `HELICONE_API_KEY` | `helicone` |
+| Jina | `JINA_API_KEY` | `jina` |
+| VoyageAI | `VOYAGEAI_API_KEY` | `voyageai` |
+| Deepgram | `DEEPGRAM_API_KEY` | `deepgram` |
+| ElevenLabs | `ELEVENLABS_API_KEY` | `elevenlabs` |
+| Stability AI | `STABILITY_API_KEY` | `stability` |
+| Runway | `RUNWAY_API_KEY` | `runway` |
+| FAL AI | `FAL_API_KEY` | `fal_ai` |
+| Firecrawl | `FIRECRAWL_API_KEY` | `firecrawl` |
+| Polly | `POLLY_API_KEY` | `polly` |
+| Infinity | `INFINITY_BASE_URL` | `infinity` |
+| Milvus | `MILVUS_BASE_URL` | `milvus` |

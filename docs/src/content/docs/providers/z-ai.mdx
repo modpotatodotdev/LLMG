@@ -1,0 +1,77 @@
+---
+title: Z.AI (GLM)
+description: Use Z.AI GLM models through LLMG.
+---
+
+Z.AI provides high-performance large language models, including the GLM-4 and GLM-5 series. LLMG supports both the **General Inference** and **Coding Plan** endpoints.
+
+## Configuration
+
+LLMG supports two distinct provider identifiers for Z.AI to accommodate different plans:
+
+- `z_ai`: For general inference (standard models like `glm-5`).
+- `z_ai_coding`: For the dedicated Coding Plan (optimized for code generation, e.g., `GLM-4.7`).
+
+### Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `Z_AI_API_KEY` | Yes | Your Z.AI API key. |
+
+## Usage
+
+### Gateway
+
+You can use either the general or coding endpoint by prefixing the model with the appropriate provider name.
+
+#### General Inference
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "z_ai/glm-5",
+    "messages": [{"role": "user", "content": "How do I implement a binary search in Rust?"}]
+  }'
+```
+
+#### Coding Plan
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "z_ai_coding/GLM-4.7",
+    "messages": [{"role": "user", "content": "Fix the bugs in this snippet..."}]
+  }'
+```
+
+### Library
+
+```rust
+use llmg_providers::z_ai::ZaiClient;
+use llmg_core::provider::Provider;
+
+// General Plan
+let client = ZaiClient::new("your-api-key");
+
+// Coding Plan
+let coding_client = ZaiClient::coding("your-api-key");
+```
+
+## Supported Models
+
+LLMG dynamically fetches the list of available models if the provider supports the `/models` endpoint. Otherwise, it falls back to a list of known models including:
+
+- `glm-5`
+- `GLM-4.7`
+- `GLM-4.5`
+- `GLM-4.5-air`
+- `GLM-4-plus`
+- `GLM-4-flash`
+- `glm-4v` (Vision)
+
+## Features
+
+- **OpenAI Compatible**: Fully supports the OpenAI chat completion protocol.
+- **Dynamic Model Loading**: Attempts to fetch the latest available models from Z.AI automatically.
+- **SSE Streaming**: Supports real-time streaming of model responses.
+- **Dual Endpoints**: Easy switching between general and coding-specialized APIs.

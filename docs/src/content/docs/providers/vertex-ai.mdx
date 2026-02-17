@@ -1,0 +1,37 @@
+---
+title: Google Vertex AI
+description: Use Google Vertex AI models through LLMG.
+---
+
+## Configuration
+
+| Variable | Required |
+|----------|----------|
+| `GOOGLE_API_KEY` | Yes |
+| `GOOGLE_CLOUD_PROJECT` | Yes |
+| `GOOGLE_CLOUD_LOCATION` | Yes |
+
+## Usage
+
+### Gateway
+
+```bash
+curl -X POST http://localhost:8080/v1/chat/completions \
+  -H "Content-Type: application/json" \
+  -d '{"model": "vertex_ai/gemini-1.5-pro", "messages": [{"role": "user", "content": "Hello!"}]}'
+```
+
+### Library
+
+```rust
+use llmg_providers::vertex_ai::VertexAiClient;
+use llmg_core::provider::Provider;
+
+let client = VertexAiClient::from_env()?;
+```
+
+## Features
+
+- Chat completions
+- Embeddings
+- Gemini model support
