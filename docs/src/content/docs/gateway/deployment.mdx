@@ -130,7 +130,7 @@ default_model = "gpt-4"
 [providers.anthropic]
 enabled = true
 api_key = "${ANTHROPIC_API_KEY}"
-default_model = "claude-3-opus-20240229"
+default_model = "claude-sonnet-4-20250514"
 
 [aliases]
 gpt-4 = "openai/gpt-4"
@@ -354,40 +354,15 @@ Use this for load balancer health checks and monitoring.
 
 ## Monitoring
 
-### Prometheus Metrics
+### Structured Logging
 
-The gateway exposes Prometheus metrics at `/metrics`:
+The gateway uses `tracing` for structured logging. Set the log level to control verbosity:
 
 ```bash
-curl http://localhost:8080/metrics
+LLMG_LOG_LEVEL=info  # Default: info, debug, trace for more detail
 ```
 
-Key metrics include:
-- `llmg_requests_total` - Total requests by provider and status
-- `llmg_request_duration_seconds` - Request latency histogram
-- `llmg_active_connections` - Current active connections
-
-### Grafana Dashboard
-
-Import the following dashboard JSON to monitor your gateway:
-
-```json
-{
-  "dashboard": {
-    "title": "LLMG Gateway",
-    "panels": [
-      {
-        "title": "Requests/sec",
-        "targets": [
-          {
-            "expr": "rate(llmg_requests_total[5m])"
-          }
-        ]
-      }
-    ]
-  }
-}
-```
+Pipe logs to your observability stack (e.g. Datadog, Loki, CloudWatch) for monitoring request patterns, error rates, and latency.
 
 ## Production Checklist
 

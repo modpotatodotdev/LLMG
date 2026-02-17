@@ -40,4 +40,4 @@ docker build -t llmg .
 docker run -p 8080:8080 -e OPENAI_API_KEY=sk-... llmg
 ```
 
-The Dockerfile uses a multi-stage build with `rust:1.75-slim` for compilation and `debian:bookworm-slim` for the runtime image.
+The Dockerfile uses a multi-stage build with `rust:1.87-slim` for compilation and `debian:bookworm-slim` for the runtime image.

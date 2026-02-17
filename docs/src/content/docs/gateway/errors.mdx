@@ -473,8 +473,8 @@ LLMG_LOG_LEVEL=debug ./llmg-gateway
 
 ```bash
 # Verbose curl to see full request/response
+# Note: The gateway uses server-side API keys (env vars), not client-side auth headers
 curl -v -X POST http://localhost:8080/v1/chat/completions \
-  -H "Authorization: Bearer $OPENAI_API_KEY" \
   -H "Content-Type: application/json" \
   -d '{"model": "openai/gpt-4", "messages": [{"role": "user", "content": "Hi"}]}'
 ```

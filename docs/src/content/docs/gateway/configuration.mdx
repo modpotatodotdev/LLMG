@@ -11,7 +11,8 @@ description: Configure the LLMG gateway via environment variables or config file
 |----------|---------|-------------|
 | `LLMG_PORT` | `8080` | Server port |
 | `LLMG_HOST` | `0.0.0.0` | Bind address |
-| `LLMG_LOG_LEVEL` | `info` | Log level |
+| `LLMG_LOG_LEVEL` | `info` | Log level (`error`, `warn`, `info`, `debug`, `trace`) |
+| `LLMG_CORS` | `false` | Enable CORS headers for browser clients |
 
 ### Provider API Keys
 
@@ -50,7 +51,7 @@ default_model = "gpt-4"
 
 [aliases]
 gpt-4 = "openai/gpt-4"
-claude = "anthropic/claude-3-opus-20240229"
+claude = "anthropic/claude-sonnet-4-20250514"
 ```
 
 ## Model Aliases
@@ -60,7 +61,7 @@ The gateway supports short aliases that map to full `provider/model` paths. Buil
 | Alias | Maps To |
 |-------|---------|
 | `gpt-4` | `openai/gpt-4` |
-| `claude` | `anthropic/claude-3-opus-20240229` |
+| `claude` | `anthropic/claude-sonnet-4-20250514` |
 | `gemini` | `antigravity/gemini-2.0-flash` |
 | `llama` | `meta_llama/llama-3.1-70b-instruct` |
 | `mistral` | `mistral/mistral-large` |

@@ -37,3 +37,5 @@ let client = OllamaClient::new().with_base_url("http://my-server:11434");
 - Chat completions (auto-converts to Ollama format)
 - Embeddings
 - Custom base URL for remote Ollama instances
+
+> **Note:** `OllamaClient::from_env()` returns `Self` directly (not `Result`) since no API key is required. This differs from cloud providers like `OpenAiClient::from_env()` which return `Result<Self, LlmError>`.
