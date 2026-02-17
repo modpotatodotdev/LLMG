@@ -308,7 +308,7 @@ mod tests {
     #[test]
     fn test_zai_client_creation() {
         let client = ZaiClient::new("test-key");
-        assert_eq!(client.provider_name(), "zai");
+        assert_eq!(client.provider_name(), "z_ai");
         assert!(client.base_url.contains("paas/v4"));
     }
 
