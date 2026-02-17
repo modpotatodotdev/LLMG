@@ -242,29 +242,6 @@ impl Provider for MistralClient {
     fn provider_name(&self) -> &'static str {
         "mistral"
     }
-
-    fn supported_models(&self) -> Vec<String> {
-        vec![
-            "mistral-large-latest".to_string(),
-            "mistral-large-2407".to_string(),
-            "mistral-large-2411".to_string(),
-            "mistral-medium-latest".to_string(),
-            "mistral-medium-2312".to_string(),
-            "mistral-small-latest".to_string(),
-            "mistral-small-2402".to_string(),
-            "mistral-small-2409".to_string(),
-            "open-mistral-nemo".to_string(),
-            "open-mistral-7b".to_string(),
-            "open-mixtral-8x7b".to_string(),
-            "open-mixtral-8x22b".to_string(),
-            "codestral-latest".to_string(),
-            "codestral-2405".to_string(),
-            "pixtral-large-latest".to_string(),
-            "pixtral-12b".to_string(),
-            "ministral-3b-latest".to_string(),
-            "ministral-8b-latest".to_string(),
-        ]
-    }
 }
 
 #[cfg(test)]

@@ -199,8 +199,7 @@ impl Provider for ZaiClient {
             .map_err(|e| LlmError::HttpError(e.to_string()))?;
 
         if !response.status().is_success() {
-            // If /models is not supported, return the fallback list
-            return Ok(self.supported_models());
+            return Ok(vec![]);
         }
 
         let body: serde_json::Value = response
@@ -215,27 +214,13 @@ impl Provider for ZaiClient {
                     .filter_map(|m| m["id"].as_str().map(|s| s.to_string()))
                     .collect()
             })
-            .unwrap_or_else(|| self.supported_models());
+            .unwrap_or_default();
 
         Ok(models)
     }
 
     fn provider_name(&self) -> &'static str {
         "zai"
-    }
-
-    fn supported_models(&self) -> Vec<String> {
-        vec![
-            "glm-5".to_string(),
-            "glm-4.7".to_string(),
-            "glm-4.5".to_string(),
-            "glm-4.5-air".to_string(),
-            "glm-4.6v".to_string(),
-            "glm-4v".to_string(),
-            "glm-4v-flash".to_string(),
-            "glm-4-flash".to_string(),
-            "glm-4-plus".to_string(),
-        ]
     }
 }
 

@@ -326,26 +326,6 @@ impl Provider for AnthropicClient {
     fn provider_name(&self) -> &'static str {
         "anthropic"
     }
-
-    fn supported_models(&self) -> Vec<String> {
-        vec![
-            "claude-3-opus-20240229".to_string(),
-            "claude-3-opus-latest".to_string(),
-            "claude-3-sonnet-20240229".to_string(),
-            "claude-3-haiku-20240307".to_string(),
-            "claude-3-5-haiku-20241022".to_string(),
-            "claude-3-5-haiku-latest".to_string(),
-            "claude-3-5-sonnet-20240620".to_string(),
-            "claude-3-5-sonnet-20241022".to_string(),
-            "claude-3-5-sonnet-latest".to_string(),
-            "claude-3-7-sonnet-20250219".to_string(),
-            "claude-3-7-sonnet-latest".to_string(),
-            "claude-sonnet-4-20250514".to_string(),
-            "claude-sonnet-4-latest".to_string(),
-            "claude-opus-4-20250514".to_string(),
-            "claude-opus-4-latest".to_string(),
-        ]
-    }
 }
 
 fn parse_anthropic_sse_line(

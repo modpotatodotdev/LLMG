@@ -216,16 +216,6 @@ impl Provider for DeepseekClient {
     fn provider_name(&self) -> &'static str {
         "deepseek"
     }
-
-    fn supported_models(&self) -> Vec<String> {
-        vec![
-            "deepseek-chat".to_string(),
-            "deepseek-coder".to_string(),
-            "deepseek-reasoner".to_string(),
-            "deepseek-r1".to_string(),
-            "deepseek-v3".to_string(),
-        ]
-    }
 }
 
 #[cfg(test)]

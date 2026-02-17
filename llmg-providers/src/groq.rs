@@ -91,29 +91,6 @@ impl Provider for GroqClient {
     fn provider_name(&self) -> &'static str {
         "groq"
     }
-
-    fn supported_models(&self) -> Vec<String> {
-        vec![
-            "llama-3.3-70b-versatile".to_string(),
-            "llama-3.3-70b-specdec".to_string(),
-            "llama3-70b-8192".to_string(),
-            "llama3-8b-8192".to_string(),
-            "llama3-groq-70b-8192-tool-use-preview".to_string(),
-            "llama3-groq-8b-8192-tool-use-preview".to_string(),
-            "llama-3.1-8b-instant".to_string(),
-            "llama-3.2-1b-preview".to_string(),
-            "llama-3.2-3b-preview".to_string(),
-            "llama-3.2-11b-vision-preview".to_string(),
-            "llama-3.2-90b-vision-preview".to_string(),
-            "mixtral-8x7b-32768".to_string(),
-            "gemma2-9b-it".to_string(),
-            "deepseek-r1-distill-llama-70b".to_string(),
-            "qwen-2.5-32b".to_string(),
-            "qwen-qwq-32b-preview".to_string(),
-            "whisper-large-v3".to_string(),
-            "whisper-large-v3-turbo".to_string(),
-        ]
-    }
 }
 
 #[cfg(test)]

@@ -341,34 +341,6 @@ impl Provider for OllamaClient {
     fn provider_name(&self) -> &'static str {
         "ollama"
     }
-
-    fn supported_models(&self) -> Vec<String> {
-        // Ollama supports any locally pulled model, these are common/popular ones
-        vec![
-            "llama3".to_string(),
-            "llama3.1".to_string(),
-            "llama3.2".to_string(),
-            "llama3.3".to_string(),
-            "llama2".to_string(),
-            "llama2-uncensored".to_string(),
-            "mistral".to_string(),
-            "mistral-nemo".to_string(),
-            "mixtral".to_string(),
-            "codellama".to_string(),
-            "codegemma".to_string(),
-            "gemma".to_string(),
-            "gemma2".to_string(),
-            "phi3".to_string(),
-            "qwen2".to_string(),
-            "qwen2.5".to_string(),
-            "deepseek-coder-v2".to_string(),
-            "deepseek-r1".to_string(),
-            "command-r".to_string(),
-            "llava".to_string(),
-            "nomic-embed-text".to_string(),
-            "mxbai-embed-large".to_string(),
-        ]
-    }
 }
 
 fn parse_ollama_stream_line(

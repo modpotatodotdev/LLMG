@@ -185,30 +185,6 @@ impl Provider for OpenAiClient {
     fn provider_name(&self) -> &'static str {
         "openai"
     }
-
-    fn supported_models(&self) -> Vec<String> {
-        vec![
-            "gpt-4".to_string(),
-            "gpt-4-turbo".to_string(),
-            "gpt-4-turbo-preview".to_string(),
-            "gpt-4o".to_string(),
-            "gpt-4o-mini".to_string(),
-            "gpt-4o-2024-05-13".to_string(),
-            "gpt-4o-2024-08-06".to_string(),
-            "gpt-4o-mini-2024-07-18".to_string(),
-            "gpt-4-32k".to_string(),
-            "gpt-4-0125-preview".to_string(),
-            "gpt-4-1106-preview".to_string(),
-            "gpt-3.5-turbo".to_string(),
-            "gpt-3.5-turbo-16k".to_string(),
-            "gpt-3.5-turbo-0125".to_string(),
-            "gpt-3.5-turbo-1106".to_string(),
-            "o1".to_string(),
-            "o1-mini".to_string(),
-            "o1-preview".to_string(),
-            "chatgpt-4o-latest".to_string(),
-        ]
-    }
 }
 
 fn parse_openai_sse_line(
