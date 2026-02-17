@@ -20,9 +20,16 @@ A high-performance Rust LLM gateway and provider library. One OpenAI-compatible 
 
 ### Gateway
 
+Install the gateway via cargo:
+
 ```bash
-cargo build --release --bin llmg-gateway
-OPENAI_API_KEY=sk-... ./target/release/llmg-gateway
+cargo install llmg-gateway
+```
+
+Then run it with your API keys:
+
+```bash
+OPENAI_API_KEY=sk-... llmg-gateway
 ```
 
 ```bash
