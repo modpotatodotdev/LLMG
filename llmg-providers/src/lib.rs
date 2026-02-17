@@ -76,6 +76,7 @@ pub mod stability;
 pub mod synthetic;
 pub mod together_ai;
 pub mod triton;
+pub mod utils;
 pub mod v0;
 pub mod vertex_ai;
 pub mod vllm;

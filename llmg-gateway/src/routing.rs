@@ -13,34 +13,13 @@ use llmg_core::types::ChatCompletionRequest;
 use serde_json::json;
 use std::sync::Arc;
 
+/// We now use the implementation in llmg-core::provider::parse_model_id
+pub use llmg_core::provider::parse_model_id as core_parse_model_id;
+
 /// Parse a model identifier in the format "provider/model"
-/// Supports nested routing like "openrouter/openai/gpt-4"
-///
-/// Returns: (provider, model_name)
-///
-/// Examples:
-/// - "openai/gpt-4" -> ("openai", "gpt-4")
-/// - "anthropic/claude-3" -> ("anthropic", "claude-3")
-/// - "openrouter/openai/gpt-4" -> ("openrouter", "openai/gpt-4")
+/// Wrapper around core `parse_model_id` that maps to `RoutingError`
 pub fn parse_model_id(model_id: &str) -> Result<(&str, String), RoutingError> {
-    let parts: Vec<&str> = model_id.split('/').collect();
-
-    if parts.len() < 2 {
-        return Err(RoutingError::InvalidFormat(
-            "Model must be in format 'provider/model'".to_string(),
-        ));
-    }
-
-    let provider = parts[0];
-    let model_name = parts[1..].join("/");
-
-    if provider.is_empty() || model_name.is_empty() {
-        return Err(RoutingError::InvalidFormat(
-            "Provider and model name cannot be empty".to_string(),
-        ));
-    }
-
-    Ok((provider, model_name))
+    core_parse_model_id(model_id).map_err(RoutingError::InvalidFormat)
 }
 
 /// Extract provider from chat completion request

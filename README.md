@@ -57,13 +57,19 @@ llmg-providers = { version = "0.1", features = ["openai"] }
 ```
 
 ```rust
-use llmg_providers::openai::OpenAiClient;
-use llmg_core::provider::Provider;
+use llmg_core::provider::{Provider, ProviderRegistry, RoutingProvider};
 use llmg_core::types::{ChatCompletionRequest, Message};
 
-let client = OpenAiClient::from_env()?;
+// 1. Create registry and auto-load from env (OPENAI_API_KEY, ANTHROPIC_API_KEY, etc.)
+let mut registry = ProviderRegistry::new();
+llmg_providers::utils::register_all_from_env(&mut registry);
+
+// 2. Create the provider-agnostic client
+let client = RoutingProvider::new(registry);
+
+// 3. Use "provider/model" routing syntax
 let request = ChatCompletionRequest {
-    model: "gpt-4".to_string(),
+    model: "openai/gpt-4".to_string(), // Routes to OpenAI
     messages: vec![Message::User { content: "Hello!".to_string(), name: None }],
     ..Default::default()
 };

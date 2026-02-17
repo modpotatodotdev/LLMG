@@ -21,8 +21,13 @@ use llmg_providers::openai::OpenAiClient;
 
 #[tokio::main]
 async fn main() -> Result<(), Box<dyn std::error::Error>> {
-    let openai = OpenAiClient::from_env()?;
-    let adapter = RigAdapter::new(openai, "gpt-4");
+    // 1. Setup provider-agnostic client
+    let mut registry = llmg_core::provider::ProviderRegistry::new();
+    llmg_providers::utils::register_all_from_env(&mut registry);
+    let client = llmg_core::provider::RoutingProvider::new(registry);
+
+    // 2. Create adapter with specific model (routes automatically)
+    let adapter = RigAdapter::new(client, "openai/gpt-4"); // or "anthropic/claude-3-opus"
 
     let completion = adapter
         .completion()
