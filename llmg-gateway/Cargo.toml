@@ -9,7 +9,6 @@ readme.workspace = true
 keywords.workspace = true
 categories.workspace = true
 description = "HTTP gateway server for LLMG"
-publish = false
 
 [[bin]]
 name = "llmg-gateway"
