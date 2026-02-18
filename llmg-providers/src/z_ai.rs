@@ -17,6 +17,22 @@ pub struct ZaiClient {
 }
 
 impl ZaiClient {
+    /// Create a new Z.AI client from environment (general endpoint)
+    /// Uses Z_AI_API_KEY environment variable
+    pub fn from_env() -> Result<Self, LlmError> {
+        let api_key = std::env::var("Z_AI_API_KEY").map_err(|_| LlmError::AuthError)?;
+        Ok(Self::new(api_key))
+    }
+
+    /// Create a new Z.AI coding client from environment
+    /// Uses Z_AI_API_KEY or GLM_CODING_PLAN_API_KEY environment variable
+    pub fn coding_from_env() -> Result<Self, LlmError> {
+        let api_key = std::env::var("Z_AI_API_KEY")
+            .or_else(|_| std::env::var("GLM_CODING_PLAN_API_KEY"))
+            .map_err(|_| LlmError::AuthError)?;
+        Ok(Self::coding(api_key))
+    }
+
     /// Create a new Z.AI client with explicit API key and default general endpoint
     pub fn new(api_key: impl Into<String>) -> Self {
         let api_key = api_key.into();

@@ -152,4 +152,14 @@ pub fn register_all_from_env(registry: &mut ProviderRegistry) {
             registry.register(Arc::new(client));
         }
     }
+
+    #[cfg(feature = "z_ai")]
+    {
+        if let Ok(client) = crate::z_ai::ZaiClient::from_env() {
+            registry.register(Arc::new(client));
+        }
+        if let Ok(client) = crate::z_ai::ZaiClient::coding_from_env() {
+            registry.register(Arc::new(client));
+        }
+    }
 }

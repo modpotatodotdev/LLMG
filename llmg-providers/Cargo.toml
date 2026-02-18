@@ -99,6 +99,7 @@ firecrawl = []
 polly = []
 runway = []
 stability = []
+z_ai = []
 integration = []
 
 [dev-dependencies]
