@@ -5,7 +5,7 @@ use std::sync::Arc;
 ///
 /// This function checks for the presence of feature flags and corresponding environment variables
 /// for each supported provider. If a provider is enabled and configured, it is added to the registry.
-pub fn register_all_from_env(registry: &mut ProviderRegistry) {
+pub async fn register_all_from_env(registry: &mut ProviderRegistry) {
     // --- Tier 1: OpenAI-compatible (simple API key) ---
     #[cfg(feature = "openai")]
     {
@@ -125,6 +125,18 @@ pub fn register_all_from_env(registry: &mut ProviderRegistry) {
     {
         if let Ok(client) = crate::xai::XaiClient::from_env() {
             registry.register(Arc::new(client));
+        }
+    }
+
+    #[cfg(feature = "github_copilot")]
+    {
+        match crate::github_copilot::GitHubCopilotClient::new().await {
+            Ok(client) => {
+                registry.register(Arc::new(client));
+            }
+            Err(e) => {
+                tracing::debug!("GitHub Copilot not initialized (likely missing tokens or feature disabled): {:?}", e);
+            }
         }
     }
 

@@ -11,7 +11,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
 
     // 2. Auto-register providers from env
     // This will check features and env vars
-    register_all_from_env(&mut registry);
+    register_all_from_env(&mut registry).await;
 
     println!("Registered providers: {:?}", registry.list());
 

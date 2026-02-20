@@ -17,6 +17,7 @@
 pub mod client;
 pub mod error;
 pub mod provider;
+#[cfg(feature = "rig")]
 pub mod rig;
 pub mod streaming;
 pub mod types;
@@ -24,6 +25,7 @@ pub mod types;
 pub use client::*;
 pub use error::*;
 pub use provider::*;
+#[cfg(feature = "rig")]
 pub use rig::*;
 pub use streaming::*;
 pub use types::*;

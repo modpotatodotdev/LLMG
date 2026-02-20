@@ -4,7 +4,7 @@ use llmg_providers::*;
 use std::sync::Arc;
 
 /// Create a provider registry based on configuration
-pub fn create_registry(config: &Config) -> ProviderRegistry {
+pub async fn create_registry(config: &Config) -> ProviderRegistry {
     let mut registry = ProviderRegistry::new();
 
     for (name, provider_cfg) in &config.providers {
@@ -838,13 +838,13 @@ pub fn create_registry(config: &Config) -> ProviderRegistry {
             }
 
             // --- Tier 5: Specialized / OAuth providers ---
-            "github_copilot" => {
-                // GitHub Copilot uses async OAuth device flow.
-                // The gateway cannot await during sync registration,
-                // so we skip automatic registration for this provider.
-                // Users should use the CLI or environment tokens.
-                None
-            }
+            "github_copilot" => match GitHubCopilotClient::new().await {
+                Ok(client) => Some(Arc::new(client)),
+                Err(e) => {
+                    tracing::warn!("Failed to initialize GitHub Copilot: {e:#}");
+                    None
+                }
+            },
             "antigravity" => {
                 // Antigravity uses async OAuth PKCE flow.
                 // Similar to GitHub Copilot, requires async initialization.

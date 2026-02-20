@@ -34,8 +34,8 @@ pub struct GatewayState {
 }
 
 impl GatewayState {
-    pub fn new(config: Config) -> Self {
-        let registry = create_registry(&config);
+    pub async fn new(config: Config) -> Self {
+        let registry = create_registry(&config).await;
         Self {
             config,
             registry,
@@ -169,7 +169,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
     let port = config.server.port;
     let addr = SocketAddr::from(([0, 0, 0, 0], port));
 
-    let state = std::sync::Arc::new(GatewayState::new(config));
+    let state = std::sync::Arc::new(GatewayState::new(config).await);
 
     // Spawn cache eviction task
     let state_clone = state.clone();

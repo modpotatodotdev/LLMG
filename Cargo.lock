@@ -1000,11 +1000,28 @@ dependencies = [
  "chrono",
  "futures",
  "reqwest",
- "rig-core",
+ "rig-core 0.30.0",
  "serde",
  "serde_json",
  "thiserror 1.0.69",
  "tokio",
+ "tracing",
+ "uuid",
+]
+
+[[package]]
+name = "llmg-core"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "4fb49b5906eca32d3fc93414c74996af35bdde2b3c4bc7888c29668bc21e8424"
+dependencies = [
+ "async-trait",
+ "chrono",
+ "futures",
+ "reqwest",
+ "serde",
+ "serde_json",
+ "thiserror 1.0.69",
  "tracing",
  "uuid",
 ]
@@ -1017,8 +1034,8 @@ dependencies = [
  "chrono",
  "clap",
  "futures",
- "llmg-core",
- "llmg-providers",
+ "llmg-core 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "llmg-providers 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "serde",
  "serde_json",
  "tokio",
@@ -1039,10 +1056,34 @@ dependencies = [
  "chrono",
  "dirs",
  "futures",
- "llmg-core",
+ "llmg-core 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
  "rand",
  "reqwest",
- "rig-core",
+ "rig-core 0.29.0",
+ "serde",
+ "serde_json",
+ "sha2",
+ "tokio",
+ "tokio-stream",
+ "tracing",
+ "urlencoding",
+ "uuid",
+]
+
+[[package]]
+name = "llmg-providers"
+version = "0.1.6"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "376f4b2a28416c5f6e0cd4c611378d62da40a317f0279e8949d89055b061e923"
+dependencies = [
+ "async-trait",
+ "base64",
+ "chrono",
+ "dirs",
+ "futures",
+ "llmg-core 0.1.6 (registry+https://github.com/rust-lang/crates.io-index)",
+ "rand",
+ "reqwest",
  "serde",
  "serde_json",
  "sha2",
@@ -1119,6 +1160,15 @@ dependencies = [
  "libc",
  "wasi",
  "windows-sys 0.61.2",
+]
+
+[[package]]
+name = "nanoid"
+version = "0.4.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3ffa00dec017b5b1a8b7cf5e2c008bfda1aa7e0697ac1508b491fdf2622fb4d8"
+dependencies = [
+ "rand",
 ]
 
 [[package]]
@@ -1505,6 +1555,38 @@ dependencies = [
  "http",
  "mime",
  "mime_guess",
+ "ordered-float",
+ "pin-project-lite",
+ "reqwest",
+ "schemars",
+ "serde",
+ "serde_json",
+ "thiserror 2.0.18",
+ "tokio",
+ "tracing",
+ "tracing-futures",
+ "url",
+]
+
+[[package]]
+name = "rig-core"
+version = "0.30.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "a8f7a3f0c7c00eaced15a68ee16e1bd6bb709ff598d11b9aedac8b628217dc09"
+dependencies = [
+ "as-any",
+ "async-stream",
+ "base64",
+ "bytes",
+ "eventsource-stream",
+ "fastrand",
+ "futures",
+ "futures-timer",
+ "glob",
+ "http",
+ "mime",
+ "mime_guess",
+ "nanoid",
  "ordered-float",
  "pin-project-lite",
  "reqwest",

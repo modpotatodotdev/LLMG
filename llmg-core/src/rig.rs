@@ -1,222 +1,315 @@
 //! Rig framework integration for LLMG
 //!
-//! Allows LLMG providers to be used with the Rig agentic AI framework.
-//! Enable with the "rig" feature flag.
+//! This module implements rig's `CompletionModel` and `CompletionClient` traits
+//! on top of LLMG's `Provider` trait, allowing any rig agent to use any loaded
+//! LLMG provider transparently using the generic `<provider>/<model>` syntax.
 
-use crate::{
-    provider::{LlmError, Provider},
-    types::{ChatCompletionRequest, ChatCompletionResponse, Message as LlmMessage},
+#![cfg(feature = "rig")]
+
+use std::sync::Arc;
+
+use crate::provider::Provider;
+use crate::types::{
+    self as llmg_types, ChatCompletionRequest, ChatCompletionResponse, FunctionDefinition, Tool,
 };
 
-/// Adapter for using LLMG providers with Rig
-pub struct RigAdapter<P: Provider> {
-    provider: P,
+use rig::completion::{
+    AssistantContent, CompletionError, CompletionModel, CompletionRequest, CompletionResponse,
+    GetTokenUsage, Usage,
+};
+use rig::message::{Message as RigMessage, ToolResultContent, UserContent};
+use rig::streaming::StreamingCompletionResponse;
+use rig::OneOrMany;
+use serde::{Deserialize, Serialize};
+use tracing::warn;
+
+// ── Placeholder streaming response type ──────────────────────────────────────
+
+/// Minimal placeholder for the streaming response associated type.
+/// LLMG does not support rig's streaming interface yet.
+#[derive(Clone, Debug, Serialize, Deserialize)]
+pub struct PlaceholderStreamingResponse;
+
+impl GetTokenUsage for PlaceholderStreamingResponse {
+    fn token_usage(&self) -> Option<Usage> {
+        None
+    }
+}
+
+// ── LlmgClient ──────────────────────────────────────────────────────────────
+
+/// A client wrapping an LLMG `Provider` behind an `Arc` so it can be shared.
+/// This acts as the `CompletionClient` for Rig.
+#[derive(Clone)]
+pub struct LlmgClient {
+    pub provider: Arc<dyn Provider>,
+}
+
+impl LlmgClient {
+    /// Create a client from an existing LLMG provider.
+    pub fn new(provider: Arc<dyn Provider>) -> Self {
+        Self { provider }
+    }
+
+    /// Create a client from a pre-built `ProviderRegistry`.
+    /// The registry is wrapped in a `RoutingProvider` for automatic model routing.
+    pub fn from_registry(registry: crate::provider::ProviderRegistry) -> Self {
+        let router = crate::provider::RoutingProvider::new(registry);
+        Self {
+            provider: Arc::new(router),
+        }
+    }
+}
+
+impl rig::client::CompletionClient for LlmgClient {
+    type CompletionModel = LlmgCompletionModel;
+
+    fn completion_model(&self, model: impl Into<String>) -> Self::CompletionModel {
+        LlmgCompletionModel::make(self, model)
+    }
+}
+
+// ── LlmgCompletionModel ─────────────────────────────────────────────────────
+
+/// A rig `CompletionModel` backed by an LLMG provider.
+#[derive(Clone)]
+pub struct LlmgCompletionModel {
+    client: LlmgClient,
     model: String,
 }
 
-impl<P: Provider + Clone> RigAdapter<P> {
-    /// Create a new Rig adapter
-    pub fn new(provider: P, model: impl Into<String>) -> Self {
+impl CompletionModel for LlmgCompletionModel {
+    type Response = ChatCompletionResponse;
+    type StreamingResponse = PlaceholderStreamingResponse;
+    type Client = LlmgClient;
+
+    fn make(client: &Self::Client, model: impl Into<String>) -> Self {
         Self {
-            provider,
+            client: client.clone(),
             model: model.into(),
         }
     }
 
-    /// Create a completion request builder
-    pub fn completion(&self) -> RigCompletionBuilder<P> {
-        RigCompletionBuilder::new(self.provider.clone(), self.model.clone())
+    async fn completion(
+        &self,
+        request: CompletionRequest,
+    ) -> Result<CompletionResponse<Self::Response>, CompletionError> {
+        let llmg_request = build_llmg_request(&self.model, &request);
+
+        let response = self
+            .client
+            .provider
+            .chat_completion(llmg_request)
+            .await
+            .map_err(|e| CompletionError::ProviderError(e.to_string()))?;
+
+        build_rig_response(response)
+    }
+
+    async fn stream(
+        &self,
+        _request: CompletionRequest,
+    ) -> Result<StreamingCompletionResponse<Self::StreamingResponse>, CompletionError> {
+        Err(CompletionError::ProviderError(
+            "streaming not supported yet in LLMG-Rig bridge".to_string(),
+        ))
     }
 }
 
-/// Builder for completion requests
-pub struct RigCompletionBuilder<P: Provider> {
-    provider: P,
-    model: String,
-    messages: Vec<LlmMessage>,
-    temperature: Option<f32>,
-    max_tokens: Option<u32>,
-}
+// ── Conversion helpers ───────────────────────────────────────────────────────
 
-impl<P: Provider> RigCompletionBuilder<P> {
-    fn new(provider: P, model: String) -> Self {
-        Self {
-            provider,
-            model,
-            messages: Vec::new(),
-            temperature: None,
-            max_tokens: None,
-        }
-    }
+/// Build an LLMG `ChatCompletionRequest` from a rig `CompletionRequest`.
+fn build_llmg_request(model: &str, request: &CompletionRequest) -> ChatCompletionRequest {
+    let mut messages: Vec<llmg_types::Message> = Vec::new();
 
-    /// Add a system message
-    pub fn system(mut self, content: impl Into<String>) -> Self {
-        self.messages.push(LlmMessage::System {
-            content: content.into(),
+    // System preamble
+    if let Some(ref preamble) = request.preamble {
+        messages.push(llmg_types::Message::System {
+            content: preamble.clone(),
             name: None,
         });
-        self
     }
 
-    /// Add a user message
-    pub fn user(mut self, content: impl Into<String>) -> Self {
-        self.messages.push(LlmMessage::User {
-            content: content.into(),
-            name: None,
-        });
-        self
+    // Convert rig chat_history (which includes the final prompt) to LLMG messages
+    for msg in request.chat_history.clone().into_iter() {
+        convert_rig_message(msg, &mut messages);
     }
 
-    /// Set temperature
-    pub fn temperature(mut self, temp: f32) -> Self {
-        self.temperature = Some(temp);
-        self
-    }
-
-    /// Set max tokens
-    pub fn max_tokens(mut self, max: u32) -> Self {
-        self.max_tokens = Some(max);
-        self
-    }
-
-    /// Send the completion request
-    pub async fn send(self) -> Result<RigCompletion, LlmError> {
-        let request = ChatCompletionRequest {
-            model: self.model,
-            messages: self.messages,
-            temperature: self.temperature,
-            max_tokens: self.max_tokens,
-            stream: Some(false),
-            top_p: None,
-            frequency_penalty: None,
-            presence_penalty: None,
-            stop: None,
-            user: None,
-            tools: None,
-            tool_choice: None,
-        };
-
-        let response = self.provider.chat_completion(request).await?;
-
-        Ok(RigCompletion::from(response))
-    }
-}
-
-/// Completion response wrapper for Rig
-pub struct RigCompletion {
-    pub content: String,
-    pub model: String,
-    pub usage: Option<crate::types::Usage>,
-}
-
-impl From<ChatCompletionResponse> for RigCompletion {
-    fn from(response: ChatCompletionResponse) -> Self {
-        let content = response
-            .choices
-            .first()
-            .and_then(|choice| match &choice.message {
-                LlmMessage::Assistant { content, .. } => content.clone(),
-                _ => None,
-            })
-            .unwrap_or_default();
-
-        Self {
-            content,
-            model: response.model,
-            usage: response.usage,
-        }
-    }
-}
-
-impl std::fmt::Display for RigCompletion {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "{}", self.content)
-    }
-}
-
-/// Example integration helper
-///
-/// ```rust
-/// use llmg_core::provider::Provider;
-/// use llmg_providers::openai::OpenAiClient;
-///
-/// async fn example() -> Result<(), Box<dyn std::error::Error>> {
-///     // Create LLMG provider
-///     let openai = OpenAiClient::from_env()?;
-///     
-///     // Wrap in Rig adapter
-///     let adapter = llmg_core::rig::RigAdapter::new(openai, "gpt-4");
-///     
-///     // Use with Rig-style API
-///     let completion = adapter
-///         .completion()
-///         .system("You are a helpful assistant")
-///         .user("Hello!")
-///         .send()
-///         .await?;
-///     
-///     println!("Response: {}", completion);
-///     Ok(())
-/// }
-/// ```
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::provider::{LlmError, Provider};
-    use crate::types::{
-        ChatCompletionRequest, ChatCompletionResponse, EmbeddingRequest, EmbeddingResponse,
+    // Convert tools
+    let tools = if request.tools.is_empty() {
+        None
+    } else {
+        Some(request.tools.iter().map(convert_tool_definition).collect())
     };
 
-    #[derive(Clone, Debug)]
-    struct MockProvider;
+    ChatCompletionRequest {
+        model: model.to_string(),
+        messages,
+        temperature: request.temperature.map(|t| t as f32),
+        max_tokens: request.max_tokens.map(|t| t as u32),
+        stream: Some(false),
+        top_p: None,
+        frequency_penalty: None,
+        presence_penalty: None,
+        stop: None,
+        user: None,
+        tools,
+        tool_choice: None,
+    }
+}
 
-    #[async_trait::async_trait]
-    impl Provider for MockProvider {
-        async fn chat_completion(
-            &self,
-            _request: ChatCompletionRequest,
-        ) -> Result<ChatCompletionResponse, LlmError> {
-            Ok(ChatCompletionResponse {
-                id: "test".to_string(),
-                object: "chat.completion".to_string(),
-                created: 0,
-                model: "test-model".to_string(),
-                choices: vec![crate::types::Choice {
-                    index: 0,
-                    message: LlmMessage::Assistant {
-                        content: Some("Test response".to_string()),
-                        refusal: None,
-                        tool_calls: None,
-                    },
-                    finish_reason: Some("stop".to_string()),
-                }],
-                usage: None,
-            })
+/// Convert a single rig `Message` into one or more LLMG messages.
+fn convert_rig_message(msg: RigMessage, out: &mut Vec<llmg_types::Message>) {
+    match msg {
+        RigMessage::User { content } => {
+            for item in content.into_iter() {
+                match item {
+                    UserContent::Text(t) => {
+                        out.push(llmg_types::Message::User {
+                            content: t.text,
+                            name: None,
+                        });
+                    }
+                    UserContent::ToolResult(tr) => {
+                        let text = tr
+                            .content
+                            .into_iter()
+                            .filter_map(|c| match c {
+                                ToolResultContent::Text(t) => Some(t.text),
+                                _ => None,
+                            })
+                            .collect::<Vec<_>>()
+                            .join("\n");
+                        out.push(llmg_types::Message::Tool {
+                            content: text,
+                            tool_call_id: tr.id,
+                        });
+                    }
+                    _ => {}
+                }
+            }
         }
+        RigMessage::Assistant { content, .. } => {
+            let mut text_parts: Vec<String> = Vec::new();
+            let mut tool_calls: Vec<llmg_types::ToolCall> = Vec::new();
 
-        async fn embeddings(
-            &self,
-            _request: EmbeddingRequest,
-        ) -> Result<EmbeddingResponse, LlmError> {
-            unimplemented!()
-        }
+            for item in content.into_iter() {
+                match item {
+                    AssistantContent::Text(t) => {
+                        text_parts.push(t.text);
+                    }
+                    AssistantContent::ToolCall(tc) => {
+                        let arguments = serde_json::to_string(&tc.function.arguments)
+                            .unwrap_or_else(|e| {
+                                warn!("failed to serialize tool call arguments: {e}");
+                                "{}".to_string()
+                            });
+                        tool_calls.push(llmg_types::ToolCall {
+                            id: tc.id,
+                            r#type: "function".to_string(),
+                            function: llmg_types::FunctionCall {
+                                name: tc.function.name,
+                                arguments,
+                            },
+                        });
+                    }
+                    _ => {}
+                }
+            }
 
-        fn provider_name(&self) -> &'static str {
-            "mock"
+            let content_str = if text_parts.is_empty() {
+                None
+            } else {
+                Some(text_parts.join(""))
+            };
+
+            let tc = if tool_calls.is_empty() {
+                None
+            } else {
+                Some(tool_calls)
+            };
+
+            out.push(llmg_types::Message::Assistant {
+                content: content_str,
+                refusal: None,
+                tool_calls: tc,
+            });
         }
     }
+}
 
-    #[tokio::test]
-    async fn test_rig_adapter() {
-        let adapter = RigAdapter::new(MockProvider, "test-model");
-        let completion = adapter
-            .completion()
-            .system("Test system")
-            .user("Test user")
-            .send()
-            .await;
-
-        assert!(completion.is_ok());
-        assert_eq!(completion.unwrap().content, "Test response");
+/// Convert a rig `ToolDefinition` to an LLMG `Tool`.
+fn convert_tool_definition(td: &rig::completion::ToolDefinition) -> Tool {
+    Tool {
+        r#type: "function".to_string(),
+        function: FunctionDefinition {
+            name: td.name.clone(),
+            description: Some(td.description.clone()),
+            parameters: td.parameters.clone(),
+        },
     }
+}
+
+/// Build a rig `CompletionResponse` from an LLMG `ChatCompletionResponse`.
+fn build_rig_response(
+    response: ChatCompletionResponse,
+) -> Result<CompletionResponse<ChatCompletionResponse>, CompletionError> {
+    let choice = response
+        .choices
+        .first()
+        .ok_or_else(|| CompletionError::ResponseError("no choices in response".to_string()))?;
+
+    let assistant_content = match &choice.message {
+        llmg_types::Message::Assistant {
+            content,
+            tool_calls,
+            ..
+        } => {
+            let mut items: Vec<AssistantContent> = Vec::new();
+
+            if let Some(text) = content {
+                if !text.is_empty() {
+                    items.push(AssistantContent::text(text));
+                }
+            }
+
+            if let Some(tcs) = tool_calls {
+                for tc in tcs {
+                    let args: serde_json::Value = serde_json::from_str(&tc.function.arguments)
+                        .unwrap_or_else(|e| {
+                            warn!("failed to parse tool call arguments: {e}");
+                            serde_json::Value::Object(serde_json::Map::new())
+                        });
+                    items.push(AssistantContent::tool_call(&tc.id, &tc.function.name, args));
+                }
+            }
+
+            if items.is_empty() {
+                OneOrMany::one(AssistantContent::text(""))
+            } else {
+                OneOrMany::many(items).map_err(|e| CompletionError::ResponseError(e.to_string()))?
+            }
+        }
+        _ => {
+            return Err(CompletionError::ResponseError(
+                "expected assistant message in response".to_string(),
+            ));
+        }
+    };
+
+    let usage = match &response.usage {
+        Some(u) => Usage {
+            input_tokens: u.prompt_tokens as u64,
+            output_tokens: u.completion_tokens as u64,
+            total_tokens: u.total_tokens as u64,
+            cached_input_tokens: 0,
+        },
+        None => Usage::default(),
+    };
+
+    Ok(CompletionResponse {
+        choice: assistant_content,
+        usage,
+        raw_response: response,
+    })
 }
