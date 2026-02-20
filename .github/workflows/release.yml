@@ -64,21 +64,24 @@ jobs:
         # ── 1. Workspace root version ──
         sed -i "s/^version = \".*\"/version = \"$NEW_VERSION\"/" Cargo.toml
 
-        # ── 2. Internal dependency version pins (llmg-xxx = { path = "...", version = "..." }) ──
+        # ── 2. Internal dependency version pins ──
+        # Handles both orderings:
+        #   llmg-xxx = { version = "...", path = "..." }
+        #   llmg-xxx = { path = "...", version = "..." }
         for f in llmg-providers/Cargo.toml llmg-gateway/Cargo.toml; do
-          sed -i -E "s/(llmg-[a-z_]+ = \{ path = \"[^\"]+\", version = )\"[^\"]+\"/\1\"$NEW_VERSION\"/" "$f"
+          sed -i -E "s/(llmg-[a-z_]+ = \{[^}]*version = )\"[^\"]+\"/\1\"$NEW_VERSION\"/" "$f"
         done
 
         # ── 3. README.md version references ──
-        sed -i -E "s/llmg-core = \"[0-9]+\.[0-9]+\"/llmg-core = \"$SHORT_VERSION\"/" README.md
-        sed -i -E "s/(llmg-providers = \{ version = )\"[0-9]+\.[0-9]+\"/\1\"$SHORT_VERSION\"/" README.md
+        sed -i -E "s/llmg-core = \"[0-9]+\.[0-9]+(\.[0-9]+)?\"/llmg-core = \"$NEW_VERSION\"/" README.md
+        sed -i -E "s/(llmg-providers = \{ version = )\"[0-9]+\.[0-9]+(\.[0-9]+)?\"/\1\"$NEW_VERSION\"/" README.md
 
         # ── 4. Documentation version references (all .md/.mdx under docs/) ──
         find docs -type f \( -name "*.md" -o -name "*.mdx" \) | while read -r f; do
-          # Cargo.toml-style: llmg-core = "0.1"
-          sed -i -E "s/llmg-core = \"[0-9]+\.[0-9]+\"/llmg-core = \"$SHORT_VERSION\"/" "$f"
-          # Cargo.toml-style: llmg-providers = { version = "0.1", ... }
-          sed -i -E "s/(llmg-providers = \{ version = )\"[0-9]+\.[0-9]+\"/\1\"$SHORT_VERSION\"/" "$f"
+          # Cargo.toml-style: llmg-core = "0.1" or "0.1.8"
+          sed -i -E "s/llmg-core = \"[0-9]+\.[0-9]+(\.[0-9]+)?\"/llmg-core = \"$NEW_VERSION\"/" "$f"
+          # Cargo.toml-style: llmg-providers = { version = "0.1" or "0.1.8", ... }
+          sed -i -E "s/(llmg-providers = \{ version = )\"[0-9]+\.[0-9]+(\.[0-9]+)?\"/\1\"$NEW_VERSION\"/" "$f"
           # JSON-style: "version": "0.1.0"
           sed -i -E "s/\"version\": \"[0-9]+\.[0-9]+\.[0-9]+\"/\"version\": \"$NEW_VERSION\"/" "$f"
         done
