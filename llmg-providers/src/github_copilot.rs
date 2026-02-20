@@ -13,13 +13,18 @@
 //! - GITHUB_COPILOT_API_KEY: Cached Copilot API key
 //! - GITHUB_COPILOT_TOKEN_DIR: Directory to store tokens (default: ~/.config/llmg/github_copilot)
 
+use eventsource_stream::Eventsource;
+use futures::{StreamExt, TryStreamExt};
 use llmg_core::{
-    provider::{LlmError, Provider},
+    provider::{ChatCompletionStream, LlmError, Provider},
+    streaming::{ChatCompletionChunk, ChoiceDelta, DeltaContent},
     types::{
         ChatCompletionRequest, ChatCompletionResponse, Choice, EmbeddingRequest, EmbeddingResponse,
         Message, Usage,
     },
 };
+use std::future::Future;
+use std::pin::Pin;
 // use serde::Deserialize; // removed unused import
 use std::collections::HashMap;
 use std::path::PathBuf;
@@ -524,6 +529,90 @@ impl GitHubCopilotClient {
         Ok(self.convert_response(copilot_resp))
     }
 
+    async fn make_stream_request(
+        &mut self,
+        request: ChatCompletionRequest,
+    ) -> Result<ChatCompletionStream, LlmError> {
+        if self.api_key.is_empty() {
+            self.refresh_api_key().await?;
+        }
+
+        let url = format!("{}/chat/completions", GITHUB_COPILOT_API_BASE);
+        let mut copilot_req = self.convert_request(request.clone());
+        copilot_req.stream = Some(true);
+
+        let initiator = if request
+            .messages
+            .iter()
+            .any(|m| matches!(m, Message::Assistant { .. } | Message::Tool { .. }))
+        {
+            "agent"
+        } else {
+            "user"
+        };
+
+        let request_id = uuid::Uuid::new_v4().to_string();
+        let resp = self
+            .http_client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .header("editor-version", "vscode/1.95.0")
+            .header("editor-plugin-version", "copilot-chat/0.26.7")
+            .header("Copilot-Integration-Id", "vscode-chat")
+            .header("User-Agent", "GitHubCopilotChat/0.26.7")
+            .header("openai-intent", "conversation-panel")
+            .header("x-github-api-version", "2025-04-01")
+            .header("x-request-id", &request_id)
+            .header("x-vscode-user-agent-library-version", "electron-fetch")
+            .header("X-Initiator", initiator)
+            .json(&copilot_req)
+            .send()
+            .await
+            .map_err(|e| LlmError::HttpError(e.to_string()))?;
+
+        if resp.status().as_u16() == 401 {
+            self.refresh_api_key().await?;
+            return Box::pin(async move { self.make_stream_request(request).await }).await;
+        }
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let text = resp.text().await.unwrap_or_default();
+
+            if status == 429 {
+                return Err(LlmError::RateLimitError);
+            }
+
+            return Err(LlmError::ApiError {
+                status,
+                message: text,
+            });
+        }
+
+        let chunk_id = ChatCompletionChunk::generate_id();
+        let model = copilot_req.model.clone();
+
+        let stream = resp
+            .bytes_stream()
+            .eventsource()
+            .map_err(|e| LlmError::HttpError(e.to_string()))
+            .then(move |event_result| {
+                let chunk_id = chunk_id.clone();
+                let model = model.clone();
+                async move {
+                    match event_result {
+                        Ok(event) => parse_copilot_sse_data(&event.data, &chunk_id, &model),
+                        Err(e) => Err(LlmError::HttpError(e.to_string())),
+                    }
+                }
+            })
+            .try_filter_map(|chunk| async move { Ok(chunk) });
+
+        Ok(Box::pin(stream) as ChatCompletionStream)
+    }
+
     async fn make_embedding_request(
         &mut self,
         request: EmbeddingRequest,
@@ -634,6 +723,14 @@ impl Provider for GitHubCopilotClient {
         client.make_request(request).await
     }
 
+    fn chat_completion_stream(
+        &self,
+        request: ChatCompletionRequest,
+    ) -> Pin<Box<dyn Future<Output = Result<ChatCompletionStream, LlmError>> + Send + '_>> {
+        let mut client = self.clone();
+        Box::pin(async move { client.make_stream_request(request).await })
+    }
+
     async fn embeddings(&self, request: EmbeddingRequest) -> Result<EmbeddingResponse, LlmError> {
         let mut client = self.clone();
         client.make_embedding_request(request).await
@@ -641,6 +738,64 @@ impl Provider for GitHubCopilotClient {
     fn provider_name(&self) -> &'static str {
         "github_copilot"
     }
+}
+
+fn parse_copilot_sse_data(
+    data: &str,
+    chunk_id: &str,
+    model: &str,
+) -> Result<Option<ChatCompletionChunk>, LlmError> {
+    let data = data.trim();
+    if data.is_empty() || data == "[DONE]" {
+        return Ok(None);
+    }
+
+    let parsed: serde_json::Value =
+        serde_json::from_str(data).map_err(LlmError::SerializationError)?;
+
+    let choices = parsed
+        .get("choices")
+        .and_then(|c| c.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|choice| {
+                    let index = choice.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as u32;
+                    let delta = choice.get("delta")?;
+                    let finish_reason = choice
+                        .get("finish_reason")
+                        .and_then(|f| f.as_str())
+                        .map(|s| s.to_string());
+
+                    let role = delta
+                        .get("role")
+                        .and_then(|r| r.as_str())
+                        .map(|s| s.to_string());
+                    let content = delta
+                        .get("content")
+                        .and_then(|c| c.as_str())
+                        .map(|s| s.to_string());
+
+                    Some(ChoiceDelta {
+                        index,
+                        delta: DeltaContent { role, content },
+                        finish_reason,
+                    })
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
+
+    if choices.is_empty() {
+        return Ok(None);
+    }
+
+    return Ok(Some(ChatCompletionChunk {
+        id: chunk_id.to_string(),
+        object: "chat.completion.chunk".to_string(),
+        created: chrono::Utc::now().timestamp(),
+        model: model.to_string(),
+        choices,
+    }));
 }
 
 #[cfg(test)]

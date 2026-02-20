@@ -1,5 +1,6 @@
 #![allow(clippy::if_same_then_else, clippy::redundant_closure)]
 
+use eventsource_stream::Eventsource;
 use futures::{StreamExt, TryStreamExt};
 use llmg_core::{
     provider::{ApiKeyCredentials, ChatCompletionStream, Credentials, LlmError, Provider},
@@ -282,16 +283,14 @@ impl AnthropicClient {
 
         let stream = response
             .bytes_stream()
+            .eventsource()
             .map_err(|e| LlmError::HttpError(e.to_string()))
-            .then(move |bytes_result| {
+            .then(move |event_result| {
                 let chunk_id = chunk_id.clone();
                 let model = model.clone();
                 async move {
-                    match bytes_result {
-                        Ok(bytes) => {
-                            let text = String::from_utf8_lossy(&bytes);
-                            parse_anthropic_sse_line(&text, &chunk_id, &model)
-                        }
+                    match event_result {
+                        Ok(event) => parse_anthropic_sse_data(&event.data, &chunk_id, &model),
                         Err(e) => Err(LlmError::HttpError(e.to_string())),
                     }
                 }
@@ -328,30 +327,18 @@ impl Provider for AnthropicClient {
     }
 }
 
-fn parse_anthropic_sse_line(
-    line: &str,
+fn parse_anthropic_sse_data(
+    data: &str,
     chunk_id: &str,
     model: &str,
 ) -> Result<Option<ChatCompletionChunk>, LlmError> {
-    let line = line.trim();
-    if line.is_empty() {
-        return Ok(None);
-    }
-
-    let event_data = if let Some(data) = line.strip_prefix("data: ") {
-        data
-    } else if line.strip_prefix("event: ").is_some() {
-        return Ok(None);
-    } else {
-        return Ok(None);
-    };
-
-    if event_data.is_empty() {
+    let data = data.trim();
+    if data.is_empty() {
         return Ok(None);
     }
 
     let parsed: serde_json::Value =
-        serde_json::from_str(event_data).map_err(LlmError::SerializationError)?;
+        serde_json::from_str(data).map_err(LlmError::SerializationError)?;
 
     let event_type = parsed.get("type").and_then(|t| t.as_str()).unwrap_or("");
 

@@ -1,3 +1,4 @@
+use eventsource_stream::Eventsource;
 use futures::{StreamExt, TryStreamExt};
 use llmg_core::{
     provider::{ApiKeyCredentials, ChatCompletionStream, Credentials, LlmError, Provider},
@@ -138,16 +139,14 @@ impl ZaiClient {
 
         let stream = response
             .bytes_stream()
+            .eventsource()
             .map_err(|e| LlmError::HttpError(e.to_string()))
-            .then(move |bytes_result| {
+            .then(move |event_result| {
                 let chunk_id = chunk_id.clone();
                 let model = model.clone();
                 async move {
-                    match bytes_result {
-                        Ok(bytes) => {
-                            let text = String::from_utf8_lossy(&bytes);
-                            parse_zai_sse_line(&text, &chunk_id, &model)
-                        }
+                    match event_result {
+                        Ok(event) => parse_zai_sse_data(&event.data, &chunk_id, &model),
                         Err(e) => Err(LlmError::HttpError(e.to_string())),
                     }
                 }
@@ -250,71 +249,62 @@ impl Provider for ZaiClient {
     }
 }
 
-fn parse_zai_sse_line(
-    line: &str,
+fn parse_zai_sse_data(
+    data: &str,
     chunk_id: &str,
     model: &str,
 ) -> Result<Option<ChatCompletionChunk>, LlmError> {
-    let line = line.trim();
-    if line.is_empty() || line == "data: [DONE]" {
+    let data = data.trim();
+    if data.is_empty() || data == "[DONE]" {
         return Ok(None);
     }
 
-    if let Some(json_str) = line.strip_prefix("data: ") {
-        if json_str.trim().is_empty() {
-            return Ok(None);
-        }
+    let parsed: serde_json::Value =
+        serde_json::from_str(data).map_err(LlmError::SerializationError)?;
 
-        let parsed: serde_json::Value =
-            serde_json::from_str(json_str).map_err(LlmError::SerializationError)?;
+    let choices = parsed
+        .get("choices")
+        .and_then(|c| c.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|choice| {
+                    let index = choice.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as u32;
+                    let delta = choice.get("delta")?;
+                    let finish_reason = choice
+                        .get("finish_reason")
+                        .and_then(|f| f.as_str())
+                        .map(|s| s.to_string());
 
-        let choices = parsed
-            .get("choices")
-            .and_then(|c| c.as_array())
-            .map(|arr| {
-                arr.iter()
-                    .filter_map(|choice| {
-                        let index =
-                            choice.get("index").and_then(|i| i.as_u64()).unwrap_or(0) as u32;
-                        let delta = choice.get("delta")?;
-                        let finish_reason = choice
-                            .get("finish_reason")
-                            .and_then(|f| f.as_str())
-                            .map(|s| s.to_string());
+                    let role = delta
+                        .get("role")
+                        .and_then(|r| r.as_str())
+                        .map(|s| s.to_string());
+                    let content = delta
+                        .get("content")
+                        .and_then(|c| c.as_str())
+                        .map(|s| s.to_string());
 
-                        let role = delta
-                            .get("role")
-                            .and_then(|r| r.as_str())
-                            .map(|s| s.to_string());
-                        let content = delta
-                            .get("content")
-                            .and_then(|c| c.as_str())
-                            .map(|s| s.to_string());
-
-                        Some(ChoiceDelta {
-                            index,
-                            delta: DeltaContent { role, content },
-                            finish_reason,
-                        })
+                    Some(ChoiceDelta {
+                        index,
+                        delta: DeltaContent { role, content },
+                        finish_reason,
                     })
-                    .collect::<Vec<_>>()
-            })
-            .unwrap_or_default();
+                })
+                .collect::<Vec<_>>()
+        })
+        .unwrap_or_default();
 
-        if choices.is_empty() {
-            return Ok(None);
-        }
-
-        return Ok(Some(ChatCompletionChunk {
-            id: chunk_id.to_string(),
-            object: "chat.completion.chunk".to_string(),
-            created: chrono::Utc::now().timestamp(),
-            model: model.to_string(),
-            choices,
-        }));
+    if choices.is_empty() {
+        return Ok(None);
     }
 
-    Ok(None)
+    return Ok(Some(ChatCompletionChunk {
+        id: chunk_id.to_string(),
+        object: "chat.completion.chunk".to_string(),
+        created: chrono::Utc::now().timestamp(),
+        model: model.to_string(),
+        choices,
+    }));
 }
 
 #[cfg(test)]

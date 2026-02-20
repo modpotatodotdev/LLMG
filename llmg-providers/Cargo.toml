@@ -27,6 +27,8 @@ base64 = "0.22"
 sha2 = "0.10"
 urlencoding = "2.1"
 dirs = "5.0"
+eventsource-stream = "0.2.3"
+tokio-util = { version = "0.7.18", features = ["codec", "io"] }
 
 [features]
 default = ["openai"]

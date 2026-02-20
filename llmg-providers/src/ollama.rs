@@ -1,6 +1,6 @@
 #![allow(clippy::redundant_closure)]
 
-use futures::TryStreamExt;
+use futures::{StreamExt, TryStreamExt};
 use llmg_core::{
     provider::{ChatCompletionStream, LlmError, Provider},
     streaming::{ChatCompletionChunk, ChoiceDelta, DeltaContent},
@@ -11,6 +11,8 @@ use llmg_core::{
 };
 use std::future::Future;
 use std::pin::Pin;
+use tokio_util::codec::{FramedRead, LinesCodec};
+use tokio_util::io::StreamReader;
 
 /// Ollama API client
 #[derive(Debug)]
@@ -244,15 +246,23 @@ impl OllamaClient {
         let chunk_id = ChatCompletionChunk::generate_id();
         let stream_model = model.clone();
 
-        let stream = response
+        let byte_stream = response
             .bytes_stream()
+            .map_err(|e| std::io::Error::new(std::io::ErrorKind::Other, e));
+
+        let stream_reader = StreamReader::new(byte_stream);
+        let lines_stream = FramedRead::new(stream_reader, LinesCodec::new());
+
+        let stream = lines_stream
             .map_err(|e| LlmError::HttpError(e.to_string()))
-            .and_then(move |bytes| {
+            .then(move |line_res| {
                 let chunk_id = chunk_id.clone();
                 let stream_model = stream_model.clone();
                 async move {
-                    let text = String::from_utf8_lossy(&bytes);
-                    parse_ollama_stream_line(&text, &chunk_id, &stream_model)
+                    match line_res {
+                        Ok(line) => parse_ollama_stream_line(&line, &chunk_id, &stream_model),
+                        Err(e) => Err(LlmError::HttpError(e.to_string())),
+                    }
                 }
             })
             .try_filter_map(|chunk| async move { Ok(chunk) });

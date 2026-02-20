@@ -13,12 +13,13 @@ use crate::types::{
     self as llmg_types, ChatCompletionRequest, ChatCompletionResponse, FunctionDefinition, Tool,
 };
 
+use futures::StreamExt;
 use rig::completion::{
     AssistantContent, CompletionError, CompletionModel, CompletionRequest, CompletionResponse,
     GetTokenUsage, Usage,
 };
 use rig::message::{Message as RigMessage, ToolResultContent, UserContent};
-use rig::streaming::StreamingCompletionResponse;
+use rig::streaming::{RawStreamingChoice, StreamingCompletionResponse};
 use rig::OneOrMany;
 use serde::{Deserialize, Serialize};
 use tracing::warn;
@@ -108,11 +109,37 @@ impl CompletionModel for LlmgCompletionModel {
 
     async fn stream(
         &self,
-        _request: CompletionRequest,
+        request: CompletionRequest,
     ) -> Result<StreamingCompletionResponse<Self::StreamingResponse>, CompletionError> {
-        Err(CompletionError::ProviderError(
-            "streaming not supported yet in LLMG-Rig bridge".to_string(),
-        ))
+        let llmg_request = build_llmg_request(&self.model, &request);
+
+        let stream = self
+            .client
+            .provider
+            .chat_completion_stream(llmg_request)
+            .await
+            .map_err(|e| CompletionError::ProviderError(e.to_string()))?;
+
+        let mapped_stream = stream.filter_map(|chunk_res| async move {
+            match chunk_res {
+                Ok(chunk) => {
+                    if let Some(choice) = chunk.choices.first() {
+                        if let Some(text) = &choice.delta.content {
+                            return Some(Ok(RawStreamingChoice::Message(text.clone())));
+                        }
+                        if choice.finish_reason.is_some() {
+                            return Some(Ok(RawStreamingChoice::FinalResponse(
+                                PlaceholderStreamingResponse,
+                            )));
+                        }
+                    }
+                    None
+                }
+                Err(e) => Some(Err(CompletionError::ProviderError(e.to_string()))),
+            }
+        });
+
+        Ok(StreamingCompletionResponse::stream(Box::pin(mapped_stream)))
     }
 }
 
