@@ -90,7 +90,9 @@ struct CopilotMessage {
 #[derive(Debug, serde::Deserialize)]
 struct CopilotChatResponse {
     id: String,
+    #[serde(default)]
     object: String,
+    #[serde(default)]
     created: i64,
     model: String,
     choices: Vec<CopilotChoice>,
@@ -115,10 +117,33 @@ struct CopilotMessageResponse {
 struct CopilotUsage {
     #[serde(rename = "prompt_tokens")]
     prompt_tokens: u32,
-    #[serde(rename = "completion_tokens")]
+    #[serde(default, rename = "completion_tokens")]
     completion_tokens: u32,
     #[serde(rename = "total_tokens")]
     total_tokens: u32,
+}
+
+#[derive(Debug, serde::Serialize)]
+struct CopilotEmbeddingRequest {
+    model: String,
+    input: Vec<String>,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct CopilotEmbeddingResponse {
+    #[serde(default)]
+    object: String,
+    data: Vec<CopilotEmbeddingData>,
+    #[serde(default)]
+    model: String,
+    usage: CopilotUsage,
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct CopilotEmbeddingData {
+    object: String,
+    index: u32,
+    embedding: Vec<f32>,
 }
 
 impl GitHubCopilotClient {
@@ -243,6 +268,7 @@ impl GitHubCopilotClient {
         let resp = client
             .post(GITHUB_DEVICE_CODE_URL)
             .header("Accept", "application/json")
+            .header("User-Agent", "GithubCopilot/1.155.0")
             .json(&serde_json::json!({
                 "client_id": GITHUB_CLIENT_ID,
                 "scope": "read:user"
@@ -273,6 +299,7 @@ impl GitHubCopilotClient {
             let resp = client
                 .post(GITHUB_ACCESS_TOKEN_URL)
                 .header("Accept", "application/json")
+                .header("User-Agent", "GithubCopilot/1.155.0")
                 .json(&serde_json::json!({
                     "client_id": GITHUB_CLIENT_ID,
                     "device_code": device_code,
@@ -321,6 +348,7 @@ impl GitHubCopilotClient {
             .get(GITHUB_COPILOT_TOKEN_URL)
             .header("Authorization", format!("token {}", self.access_token))
             .header("Accept", "application/json")
+            .header("User-Agent", "GithubCopilot/1.155.0")
             .send()
             .await
             .map_err(|e| LlmError::HttpError(format!("Failed to refresh API key: {}", e)))?;
@@ -436,15 +464,32 @@ impl GitHubCopilotClient {
         let url = format!("{}/chat/completions", GITHUB_COPILOT_API_BASE);
         let copilot_req = self.convert_request(request.clone());
 
+        let initiator = if request
+            .messages
+            .iter()
+            .any(|m| matches!(m, Message::Assistant { .. } | Message::Tool { .. }))
+        {
+            "agent"
+        } else {
+            "user"
+        };
+
+        let request_id = uuid::Uuid::new_v4().to_string();
         let resp = self
             .http_client
             .post(&url)
             .header("Authorization", format!("Bearer {}", self.api_key))
             .header("Content-Type", "application/json")
             .header("Accept", "application/json")
-            .header("editor-version", &self.editor_version)
-            .header("Copilot-Integration-Id", &self.integration_id)
-            .header("User-Agent", "GithubCopilot/1.155.0")
+            .header("editor-version", "vscode/1.95.0")
+            .header("editor-plugin-version", "copilot-chat/0.26.7")
+            .header("Copilot-Integration-Id", "vscode-chat")
+            .header("User-Agent", "GitHubCopilotChat/0.26.7")
+            .header("openai-intent", "conversation-panel")
+            .header("x-github-api-version", "2025-04-01")
+            .header("x-request-id", &request_id)
+            .header("x-vscode-user-agent-library-version", "electron-fetch")
+            .header("X-Initiator", initiator)
             .json(&copilot_req)
             .send()
             .await
@@ -469,12 +514,100 @@ impl GitHubCopilotClient {
             });
         }
 
-        let copilot_resp: CopilotChatResponse = resp
-            .json()
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| LlmError::HttpError(e.to_string()))?;
+        let copilot_resp: CopilotChatResponse = serde_json::from_str(&text)
+            .map_err(|e| LlmError::HttpError(format!("error decoding response body: {}", e)))?;
+
+        Ok(self.convert_response(copilot_resp))
+    }
+
+    async fn make_embedding_request(
+        &mut self,
+        request: EmbeddingRequest,
+    ) -> Result<EmbeddingResponse, LlmError> {
+        if self.api_key.is_empty() {
+            self.refresh_api_key().await?;
+        }
+
+        let url = format!("{}/embeddings", GITHUB_COPILOT_API_BASE);
+        let copilot_req = CopilotEmbeddingRequest {
+            model: request.model.clone(),
+            input: vec![request.input.clone()],
+        };
+
+        let request_id = uuid::Uuid::new_v4().to_string();
+        let resp = self
+            .http_client
+            .post(&url)
+            .header("Authorization", format!("Bearer {}", self.api_key))
+            .header("Content-Type", "application/json")
+            .header("Accept", "application/json")
+            .header("editor-version", "vscode/1.95.0")
+            .header("editor-plugin-version", "copilot-chat/0.26.7")
+            .header("Copilot-Integration-Id", "vscode-chat")
+            .header("User-Agent", "GitHubCopilotChat/0.26.7")
+            .header("openai-intent", "conversation-panel")
+            .header("x-github-api-version", "2025-04-01")
+            .header("x-request-id", &request_id)
+            .header("x-vscode-user-agent-library-version", "electron-fetch")
+            .header("X-Initiator", "user")
+            .json(&copilot_req)
+            .send()
             .await
             .map_err(|e| LlmError::HttpError(e.to_string()))?;
 
-        Ok(self.convert_response(copilot_resp))
+        if resp.status().as_u16() == 401 {
+            self.refresh_api_key().await?;
+            return Box::pin(async move { self.make_embedding_request(request).await }).await;
+        }
+
+        if !resp.status().is_success() {
+            let status = resp.status().as_u16();
+            let text = resp.text().await.unwrap_or_default();
+
+            if status == 429 {
+                return Err(LlmError::RateLimitError);
+            }
+
+            return Err(LlmError::ApiError {
+                status,
+                message: text,
+            });
+        }
+
+        let text = resp
+            .text()
+            .await
+            .map_err(|e| LlmError::HttpError(e.to_string()))?;
+        let copilot_resp: CopilotEmbeddingResponse = serde_json::from_str(&text)
+            .map_err(|e| LlmError::HttpError(format!("error decoding response body: {}", e)))?;
+
+        Ok(EmbeddingResponse {
+            id: uuid::Uuid::new_v4().to_string(),
+            object: if copilot_resp.object.is_empty() {
+                "list".to_string()
+            } else {
+                copilot_resp.object
+            },
+            data: copilot_resp
+                .data
+                .into_iter()
+                .map(|d| llmg_core::types::Embedding {
+                    index: d.index,
+                    object: d.object,
+                    embedding: d.embedding,
+                })
+                .collect(),
+            model: copilot_resp.model,
+            usage: Usage {
+                prompt_tokens: copilot_resp.usage.prompt_tokens,
+                completion_tokens: copilot_resp.usage.completion_tokens,
+                total_tokens: copilot_resp.usage.total_tokens,
+            },
+        })
     }
 
     pub fn get_models() -> Vec<String> {
@@ -485,6 +618,8 @@ impl GitHubCopilotClient {
             "gpt-3.5-turbo".to_string(),
             "o1-preview".to_string(),
             "o1-mini".to_string(),
+            "claude-3-5-sonnet".to_string(),
+            "text-embedding-3-small".to_string(),
         ]
     }
 }
@@ -499,10 +634,9 @@ impl Provider for GitHubCopilotClient {
         client.make_request(request).await
     }
 
-    async fn embeddings(&self, _request: EmbeddingRequest) -> Result<EmbeddingResponse, LlmError> {
-        Err(LlmError::ProviderError(
-            "GitHub Copilot does not support embeddings API".to_string(),
-        ))
+    async fn embeddings(&self, request: EmbeddingRequest) -> Result<EmbeddingResponse, LlmError> {
+        let mut client = self.clone();
+        client.make_embedding_request(request).await
     }
     fn provider_name(&self) -> &'static str {
         "github_copilot"

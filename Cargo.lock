@@ -994,23 +994,6 @@ checksum = "6373607a59f0be73a39b6fe456b8192fcc3585f602af20751600e974dd455e77"
 
 [[package]]
 name = "llmg-core"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4fb49b5906eca32d3fc93414c74996af35bdde2b3c4bc7888c29668bc21e8424"
-dependencies = [
- "async-trait",
- "chrono",
- "futures",
- "reqwest",
- "serde",
- "serde_json",
- "thiserror 1.0.69",
- "tracing",
- "uuid",
-]
-
-[[package]]
-name = "llmg-core"
 version = "0.1.7"
 dependencies = [
  "async-trait",
@@ -1034,8 +1017,8 @@ dependencies = [
  "chrono",
  "clap",
  "futures",
- "llmg-core 0.1.6",
- "llmg-providers 0.1.6",
+ "llmg-core",
+ "llmg-providers",
  "serde",
  "serde_json",
  "tokio",
@@ -1049,29 +1032,6 @@ dependencies = [
 
 [[package]]
 name = "llmg-providers"
-version = "0.1.6"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "376f4b2a28416c5f6e0cd4c611378d62da40a317f0279e8949d89055b061e923"
-dependencies = [
- "async-trait",
- "base64",
- "chrono",
- "dirs",
- "futures",
- "llmg-core 0.1.6",
- "rand",
- "reqwest",
- "serde",
- "serde_json",
- "sha2",
- "tokio",
- "tokio-stream",
- "urlencoding",
- "uuid",
-]
-
-[[package]]
-name = "llmg-providers"
 version = "0.1.7"
 dependencies = [
  "async-trait",
@@ -1079,7 +1039,7 @@ dependencies = [
  "chrono",
  "dirs",
  "futures",
- "llmg-core 0.1.6",
+ "llmg-core",
  "rand",
  "reqwest",
  "rig-core 0.29.0",
