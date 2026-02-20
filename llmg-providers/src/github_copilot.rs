@@ -129,16 +129,39 @@ impl GitHubCopilotClient {
             LlmError::ProviderError(format!("Failed to create token directory: {}", e))
         })?;
 
-        let api_key = Self::load_cached_api_key(&token_dir).await?;
-        let access_token = Self::load_cached_access_token(&token_dir).await?;
+        println!("Loading access token...");
+        let access_token = match Self::load_cached_access_token(&token_dir).await {
+            Ok(token) => token,
+            Err(e) => {
+                println!("load_cached_access_token failed with {:?}", e);
+                return Err(e);
+            }
+        };
+        println!("Access token loaded.");
 
-        Ok(Self {
+        let mut client = Self {
             http_client: reqwest::Client::new(),
-            api_key,
+            api_key: String::new(),
             access_token,
             editor_version: "vscode/1.85.1".to_string(),
             integration_id: "vscode-chat".to_string(),
-        })
+        };
+
+        if let Ok(key) = Self::load_cached_api_key(&token_dir).await {
+            client.api_key = key;
+            println!("API key loaded from cache.");
+        } else {
+            println!("Refreshing API key...");
+            match client.refresh_api_key().await {
+                Ok(_) => println!("API key refreshed."),
+                Err(e) => {
+                    println!("refresh_api_key failed with {:?}", e);
+                    return Err(e);
+                }
+            }
+        }
+
+        Ok(client)
     }
 
     /// Create with explicit API key (for testing or pre-authenticated scenarios)
