@@ -11,7 +11,7 @@ categories.workspace = true
 description = "Provider implementations for LLMG - LLM Gateway"
 
 [dependencies]
-llmg-core = { version = "0.1.13", path = "../llmg-core" }
+llmg-core = { version = "0.1.14", path = "../llmg-core" }
 reqwest = { version = "0.12", features = ["json", "stream"] }
 async-trait = "0.1"
 tracing = "0.1"
