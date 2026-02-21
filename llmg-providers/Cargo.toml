@@ -28,6 +28,7 @@ sha2 = "0.10"
 urlencoding = "2.1"
 dirs = "5.0"
 eventsource-stream = "0.2.3"
+regex = "1"
 tokio-util = { version = "0.7.18", features = ["codec", "io"] }
 
 [features]
@@ -47,6 +48,7 @@ deepinfra = []
 together_ai = []
 fireworks_ai = []
 cerebras = []
+chatjimmy = []
 sambanova = []
 friendliai = []
 nscale = []
