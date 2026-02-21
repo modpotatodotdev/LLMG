@@ -348,4 +348,3 @@ mod tests {
         assert!(body.contains("provider"));
     }
 }
-
