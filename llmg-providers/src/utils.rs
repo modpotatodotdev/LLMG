@@ -145,6 +145,13 @@ pub async fn register_all_from_env(registry: &mut ProviderRegistry) {
         }
     }
 
+    #[cfg(feature = "chatjimmy")]
+    {
+        if let Ok(client) = crate::chatjimmy::ChatJimmyClient::from_env() {
+            registry.register(Arc::new(client));
+        }
+    }
+
     // --- Tier 3: Local / Self-Hosted ---
 
     #[cfg(feature = "ollama")]
