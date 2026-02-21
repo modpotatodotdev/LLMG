@@ -4,8 +4,6 @@
 //! on top of LLMG's `Provider` trait, allowing any rig agent to use any loaded
 //! LLMG provider transparently using the generic `<provider>/<model>` syntax.
 
-#![cfg(feature = "rig")]
-
 use std::sync::Arc;
 
 use crate::provider::Provider;

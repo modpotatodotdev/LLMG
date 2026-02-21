@@ -789,13 +789,13 @@ fn parse_copilot_sse_data(
         return Ok(None);
     }
 
-    return Ok(Some(ChatCompletionChunk {
+    Ok(Some(ChatCompletionChunk {
         id: chunk_id.to_string(),
         object: "chat.completion.chunk".to_string(),
         created: chrono::Utc::now().timestamp(),
         model: model.to_string(),
         choices,
-    }));
+    }))
 }
 
 #[cfg(test)]
