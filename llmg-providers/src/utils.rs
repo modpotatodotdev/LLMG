@@ -65,8 +65,13 @@ pub async fn register_all_from_env(registry: &mut ProviderRegistry) {
 
     #[cfg(feature = "antigravity")]
     {
-        if let Ok(client) = crate::antigravity::AntigravityClient::from_env() {
-            registry.register(Arc::new(client));
+        match crate::antigravity::AntigravityClient::new().await {
+            Ok(client) => {
+                registry.register(Arc::new(client));
+            }
+            Err(e) => {
+                tracing::debug!("Antigravity not initialized: {:?}", e);
+            }
         }
     }
 
@@ -144,25 +149,20 @@ pub async fn register_all_from_env(registry: &mut ProviderRegistry) {
 
     #[cfg(feature = "ollama")]
     {
-        // Ollama usually defaults to localhost if no env vars are set,
-        // effectively "always on" if the feature is enabled.
-        if let Ok(client) = crate::ollama::OllamaClient::from_env() {
-            registry.register(Arc::new(client));
-        }
+        let client = crate::ollama::OllamaClient::from_env();
+        registry.register(Arc::new(client));
     }
 
     #[cfg(feature = "vllm")]
     {
-        if let Ok(client) = crate::vllm::VllmClient::from_env() {
-            registry.register(Arc::new(client));
-        }
+        let client = crate::vllm::VllmClient::from_env();
+        registry.register(Arc::new(client));
     }
 
     #[cfg(feature = "lm_studio")]
     {
-        if let Ok(client) = crate::lm_studio::LmStudioClient::from_env() {
-            registry.register(Arc::new(client));
-        }
+        let client = crate::lm_studio::LmStudioClient::from_env();
+        registry.register(Arc::new(client));
     }
 
     #[cfg(feature = "z_ai")]
