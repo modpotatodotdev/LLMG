@@ -15,8 +15,8 @@ name = "llmg-gateway"
 path = "src/main.rs"
 
 [dependencies]
-llmg-core = { version = "0.1.11", path = "../llmg-core" }
-llmg-providers = { version = "0.1.11", path = "../llmg-providers" }
+llmg-core = { version = "0.1.12", path = "../llmg-core" }
+llmg-providers = { version = "0.1.12", path = "../llmg-providers" }
 axum = "0.7"
 tokio = { version = "1.0", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
