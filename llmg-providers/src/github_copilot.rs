@@ -84,6 +84,10 @@ struct CopilotChatRequest {
     stop: Option<Vec<String>>,
     #[serde(skip_serializing_if = "Option::is_none")]
     max_tokens: Option<u32>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tools: Option<Vec<llmg_core::types::Tool>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_choice: Option<llmg_core::types::ToolChoice>,
 }
 
 #[derive(Debug, serde::Serialize)]
@@ -428,6 +432,8 @@ impl GitHubCopilotClient {
             stream: request.stream,
             stop: request.stop,
             max_tokens: request.max_tokens,
+            tools: request.tools,
+            tool_choice: request.tool_choice,
         }
     }
 
@@ -774,10 +780,17 @@ fn parse_copilot_sse_data(
                         .get("content")
                         .and_then(|c| c.as_str())
                         .map(|s| s.to_string());
+                    let tool_calls = delta
+                        .get("tool_calls")
+                        .and_then(|t| serde_json::from_value(t.clone()).ok());
 
                     Some(ChoiceDelta {
                         index,
-                        delta: DeltaContent { role, content },
+                        delta: DeltaContent {
+                            role,
+                            content,
+                            tool_calls,
+                        },
                         finish_reason,
                     })
                 })
@@ -842,5 +855,60 @@ mod tests {
         assert_eq!(copilot_req.messages.len(), 2);
         assert_eq!(copilot_req.messages[0].role, "system");
         assert_eq!(copilot_req.messages[1].role, "user");
+    }
+
+    #[test]
+    fn test_tool_calling_conversion() {
+        let client = GitHubCopilotClient::with_api_key("test-key", "test-token");
+
+        let tool = llmg_core::types::Tool {
+            r#type: "function".to_string(),
+            function: llmg_core::types::FunctionDefinition {
+                name: "get_weather".to_string(),
+                description: Some("Get the weather".to_string()),
+                parameters: serde_json::json!({"type": "object", "properties": {"location": {"type": "string"}}}),
+            },
+        };
+
+        let request = ChatCompletionRequest {
+            model: "gpt-4".to_string(),
+            messages: vec![Message::User {
+                content: "Weather?".to_string(),
+                name: None,
+            }],
+            temperature: None,
+            max_tokens: None,
+            stream: None,
+            top_p: None,
+            frequency_penalty: None,
+            presence_penalty: None,
+            stop: None,
+            user: None,
+            tools: Some(vec![tool]),
+            tool_choice: Some(llmg_core::types::ToolChoice::String("auto".to_string())),
+        };
+
+        let copilot_req = client.convert_request(request);
+
+        assert!(copilot_req.tools.is_some());
+        assert_eq!(copilot_req.tools.unwrap().len(), 1);
+        assert!(copilot_req.tool_choice.is_some());
+    }
+
+    #[test]
+    fn test_parse_copilot_sse_data_tool_calls() {
+        let raw_sse = r#"{"id":"chatcmpl-123","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_abc","type":"function","function":{"name":"get_weather","arguments":"{\"location\":\"Boston\"}"}}]},"finish_reason":null}]}"#;
+        let chunk = parse_copilot_sse_data(raw_sse, "chatcmpl-123", "gpt-4")
+            .unwrap()
+            .unwrap();
+
+        assert_eq!(chunk.choices.len(), 1);
+        let choice = &chunk.choices[0];
+        assert!(choice.delta.tool_calls.is_some());
+
+        let tool_calls = choice.delta.tool_calls.as_ref().unwrap();
+        assert_eq!(tool_calls.len(), 1);
+        assert_eq!(tool_calls[0].id, "call_abc");
+        assert_eq!(tool_calls[0].function.name, "get_weather");
     }
 }

@@ -286,7 +286,11 @@ fn parse_zai_sse_data(
 
                     Some(ChoiceDelta {
                         index,
-                        delta: DeltaContent { role, content },
+                        delta: DeltaContent {
+                            role,
+                            content,
+                            tool_calls: None,
+                        },
                         finish_reason,
                     })
                 })

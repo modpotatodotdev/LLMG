@@ -68,6 +68,7 @@ impl SseStream {
                                 None
                             },
                             content: Some(content),
+                            tool_calls: None,
                         },
                         finish_reason: None,
                     }],
@@ -143,6 +144,7 @@ mod tests {
                 delta: DeltaContent {
                     role: Some("assistant".to_string()),
                     content: Some("Hello".to_string()),
+                    tool_calls: None,
                 },
                 finish_reason: None,
             }],

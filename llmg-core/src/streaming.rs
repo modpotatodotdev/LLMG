@@ -83,6 +83,9 @@ pub struct DeltaContent {
     /// Content delta
     #[serde(skip_serializing_if = "Option::is_none")]
     pub content: Option<String>,
+    /// Tool calls delta
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub tool_calls: Option<Vec<crate::types::ToolCall>>,
 }
 
 impl DeltaContent {
@@ -91,6 +94,7 @@ impl DeltaContent {
         Self {
             role: Some("assistant".to_string()),
             content: None,
+            tool_calls: None,
         }
     }
 
@@ -99,6 +103,7 @@ impl DeltaContent {
         Self {
             role: None,
             content: Some(text.into()),
+            tool_calls: None,
         }
     }
 

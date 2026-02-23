@@ -378,6 +378,7 @@ impl Provider for ChatJimmyClient {
                                 DeltaContent {
                                     role: Some("assistant".to_string()),
                                     content: Some(clean),
+                                    tool_calls: None,
                                 }
                             } else {
                                 DeltaContent::content(clean)
