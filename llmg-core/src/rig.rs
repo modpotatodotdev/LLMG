@@ -118,48 +118,54 @@ impl CompletionModel for LlmgCompletionModel {
             .await
             .map_err(|e| CompletionError::ProviderError(e.to_string()))?;
 
-        let mapped_stream = stream.filter_map(|chunk_res| async move {
+        let mapped_stream = stream.flat_map(|chunk_res| {
+            let mut items = Vec::new();
             match chunk_res {
                 Ok(chunk) => {
                     if let Some(choice) = chunk.choices.first() {
                         if let Some(text) = &choice.delta.content {
-                            return Some(Ok(RawStreamingChoice::Message(text.clone())));
+                            items.push(Ok(RawStreamingChoice::Message(text.clone())));
                         }
                         if let Some(tool_calls) = &choice.delta.tool_calls {
                             for tc in tool_calls {
-                                // If it has an ID, it's the first chunk of a tool call
-                                if tc.id.is_some()
-                                    || tc.function.as_ref().map_or(false, |f| f.name.is_some())
-                                {
-                                    let id = tc
-                                        .id
-                                        .clone()
-                                        .unwrap_or_else(|| format!("call_{}", tc.index));
-                                    let name = tc
-                                        .function
-                                        .as_ref()
-                                        .and_then(|f| f.name.clone())
-                                        .unwrap_or_default();
+                                let id = tc.id.clone().unwrap_or_default();
+                                let internal_id = format!("call_{}", tc.index);
 
-                                    // Start a new tool call
-                                    return Some(Ok(RawStreamingChoice::ToolCallDelta {
-                                        id: id.clone(),
-                                        delta: String::new(), // Initial delta just to establish id and name? No wait, Rig needs the name somehow
-                                    }));
-                                    // Wait! rig 0.3 handles ToolCallDelta by aggregating it. BUT if the name is not there, how does it know the name?!
+                                if let Some(function) = &tc.function {
+                                    if let Some(name) = &function.name {
+                                        items.push(Ok(RawStreamingChoice::ToolCallDelta {
+                                            id: id.clone(),
+                                            internal_call_id: internal_id.clone(),
+                                            content: rig::streaming::ToolCallDeltaContent::Name(
+                                                name.clone(),
+                                            ),
+                                        }));
+                                    }
+                                    if let Some(args) = &function.arguments {
+                                        if !args.is_empty() {
+                                            items.push(Ok(RawStreamingChoice::ToolCallDelta {
+                                                id: id.clone(),
+                                                internal_call_id: internal_id.clone(),
+                                                content:
+                                                    rig::streaming::ToolCallDeltaContent::Delta(
+                                                        args.clone(),
+                                                    ),
+                                            }));
+                                        }
+                                    }
                                 }
                             }
                         }
                         if choice.finish_reason.is_some() {
-                            return Some(Ok(RawStreamingChoice::FinalResponse(
+                            items.push(Ok(RawStreamingChoice::FinalResponse(
                                 PlaceholderStreamingResponse,
                             )));
                         }
                     }
-                    None
                 }
-                Err(e) => Some(Err(CompletionError::ProviderError(e.to_string()))),
+                Err(e) => items.push(Err(CompletionError::ProviderError(e.to_string()))),
             }
+            futures::stream::iter(items)
         });
 
         Ok(StreamingCompletionResponse::stream(Box::pin(mapped_stream)))
