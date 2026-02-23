@@ -85,7 +85,26 @@ pub struct DeltaContent {
     pub content: Option<String>,
     /// Tool calls delta
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub tool_calls: Option<Vec<crate::types::ToolCall>>,
+    pub tool_calls: Option<Vec<DeltaToolCall>>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeltaToolCall {
+    pub index: u32,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub id: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub r#type: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub function: Option<DeltaFunctionCall>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct DeltaFunctionCall {
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub name: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub arguments: Option<String>,
 }
 
 impl DeltaContent {

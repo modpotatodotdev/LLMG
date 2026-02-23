@@ -12,7 +12,7 @@ description = "Core types and traits for LLMG - LLM Gateway"
 
 [dependencies]
 serde = { workspace = true }
-serde_json = { workspace = true }
+serde_json.workspace = true
 thiserror = { workspace = true }
 chrono = { workspace = true }
 reqwest = { version = "0.12" }

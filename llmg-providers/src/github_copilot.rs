@@ -94,6 +94,10 @@ struct CopilotChatRequest {
 struct CopilotMessage {
     role: String,
     content: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_calls: Option<Vec<llmg_core::types::ToolCall>>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    tool_call_id: Option<String>,
 }
 
 #[derive(Debug, serde::Deserialize)]
@@ -408,18 +412,33 @@ impl GitHubCopilotClient {
                 Message::System { content, .. } => CopilotMessage {
                     role: "system".to_string(),
                     content,
+                    tool_calls: None,
+                    tool_call_id: None,
                 },
                 Message::User { content, .. } => CopilotMessage {
                     role: "user".to_string(),
                     content,
+                    tool_calls: None,
+                    tool_call_id: None,
                 },
-                Message::Assistant { content, .. } => CopilotMessage {
+                Message::Assistant {
+                    content,
+                    tool_calls,
+                    ..
+                } => CopilotMessage {
                     role: "assistant".to_string(),
                     content: content.unwrap_or_default(),
+                    tool_calls,
+                    tool_call_id: None,
                 },
-                Message::Tool { content, .. } => CopilotMessage {
+                Message::Tool {
+                    content,
+                    tool_call_id,
+                } => CopilotMessage {
                     role: "tool".to_string(),
                     content,
+                    tool_calls: None,
+                    tool_call_id: Some(tool_call_id),
                 },
             })
             .collect();
@@ -908,7 +927,13 @@ mod tests {
 
         let tool_calls = choice.delta.tool_calls.as_ref().unwrap();
         assert_eq!(tool_calls.len(), 1);
-        assert_eq!(tool_calls[0].id, "call_abc");
-        assert_eq!(tool_calls[0].function.name, "get_weather");
+        assert_eq!(tool_calls[0].id.as_deref(), Some("call_abc"));
+        assert_eq!(
+            tool_calls[0]
+                .function
+                .as_ref()
+                .and_then(|f| f.name.as_deref()),
+            Some("get_weather")
+        );
     }
 }

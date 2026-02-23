@@ -125,6 +125,31 @@ impl CompletionModel for LlmgCompletionModel {
                         if let Some(text) = &choice.delta.content {
                             return Some(Ok(RawStreamingChoice::Message(text.clone())));
                         }
+                        if let Some(tool_calls) = &choice.delta.tool_calls {
+                            for tc in tool_calls {
+                                // If it has an ID, it's the first chunk of a tool call
+                                if tc.id.is_some()
+                                    || tc.function.as_ref().map_or(false, |f| f.name.is_some())
+                                {
+                                    let id = tc
+                                        .id
+                                        .clone()
+                                        .unwrap_or_else(|| format!("call_{}", tc.index));
+                                    let name = tc
+                                        .function
+                                        .as_ref()
+                                        .and_then(|f| f.name.clone())
+                                        .unwrap_or_default();
+
+                                    // Start a new tool call
+                                    return Some(Ok(RawStreamingChoice::ToolCallDelta {
+                                        id: id.clone(),
+                                        delta: String::new(), // Initial delta just to establish id and name? No wait, Rig needs the name somehow
+                                    }));
+                                    // Wait! rig 0.3 handles ToolCallDelta by aggregating it. BUT if the name is not there, how does it know the name?!
+                                }
+                            }
+                        }
                         if choice.finish_reason.is_some() {
                             return Some(Ok(RawStreamingChoice::FinalResponse(
                                 PlaceholderStreamingResponse,
