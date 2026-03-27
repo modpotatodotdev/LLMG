@@ -917,7 +917,7 @@ mod tests {
 
     #[test]
     fn test_parse_copilot_sse_data_tool_calls() {
-        let raw_sse = r#"{"id":"chatcmpl-123","choices":[{"index":0,"delta":{"tool_calls":[{"id":"call_abc","type":"function","function":{"name":"get_weather","arguments":"{\"location\":\"Boston\"}"}}]},"finish_reason":null}]}"#;
+        let raw_sse = r#"{"id":"chatcmpl-123","choices":[{"index":0,"delta":{"tool_calls":[{"index":0,"id":"call_abc","type":"function","function":{"name":"get_weather","arguments":"{\"location\":\"Boston\"}"}}]},"finish_reason":null}]}"#;
         let chunk = parse_copilot_sse_data(raw_sse, "chatcmpl-123", "gpt-4")
             .unwrap()
             .unwrap();
