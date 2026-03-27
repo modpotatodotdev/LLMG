@@ -40,11 +40,13 @@ struct WsSession {
     previous_response_id: Option<String>,
     response_cache: std::collections::HashMap<String, ResponseCacheEntry>,
     conversation_history: Vec<ChatMessage>,
+    #[allow(dead_code)]
     session_id: String,
     cancelled: std::sync::Arc<std::sync::atomic::AtomicBool>,
 }
 
 /// Cached response data for conversation continuation
+#[allow(dead_code)]
 #[derive(Debug, Clone)]
 struct ResponseCacheEntry {
     /// The response ID
@@ -90,6 +92,7 @@ pub struct ToolDefinition {
     #[serde(default)]
     pub parameters: Option<serde_json::Value>,
     #[serde(default)]
+    #[allow(dead_code)]
     pub strict: Option<bool>,
 }
 
@@ -123,6 +126,7 @@ struct StreamingToolCall {
     output_index: u32,
 }
 
+#[allow(dead_code)]
 #[derive(Debug, Deserialize, Default, Clone)]
 pub struct ReasoningEffort {
     pub effort: Option<String>,
@@ -136,16 +140,17 @@ enum ClientEvent {
     ResponseCreate {
         model: String,
         #[serde(default)]
-        input: InputValue,
+        input: Box<InputValue>,
         previous_response_id: Option<String>,
         #[serde(default)]
+        #[allow(dead_code)]
         conversation: Option<String>,
         #[serde(default)]
         store: Option<bool>,
         #[serde(default)]
         tools: Option<Vec<ToolDefinition>>,
         #[serde(default)]
-        tool_choice: Option<serde_json::Value>,
+        tool_choice: Option<Box<serde_json::Value>>,
         #[serde(default)]
         parallel_tool_calls: Option<bool>,
         #[serde(default)]
@@ -157,22 +162,29 @@ enum ClientEvent {
         #[serde(default)]
         top_p: Option<f32>,
         #[serde(default)]
-        text: Option<TextFormatConfig>,
+        text: Option<Box<TextFormatConfig>>,
         #[serde(default)]
+        #[allow(dead_code)]
         stream: Option<bool>,
         #[serde(default)]
         stream_options: Option<StreamOptions>,
         #[serde(default)]
-        metadata: Option<serde_json::Value>,
+        metadata: Option<Box<serde_json::Value>>,
         #[serde(default)]
         reasoning_effort: Option<String>,
         #[serde(default)]
         service_tier: Option<String>,
     },
     #[serde(rename = "response.compact")]
-    ResponseCompact { response_id: String },
+    ResponseCompact {
+        #[allow(dead_code)]
+        response_id: String,
+    },
     #[serde(rename = "input_audio_buffer.append")]
-    InputAudioBufferAppend { audio: String },
+    InputAudioBufferAppend {
+        #[allow(dead_code)]
+        audio: String,
+    },
     #[serde(rename = "input_audio_buffer.commit")]
     InputAudioBufferCommit,
     #[serde(rename = "input_audio_buffer.clear")]
@@ -182,6 +194,7 @@ enum ClientEvent {
     #[serde(rename = "conversation.item.truncate")]
     ConversationItemTruncate {
         item_id: String,
+        #[allow(dead_code)]
         content_index: u32,
         truncate_offset: u32,
     },
@@ -190,7 +203,10 @@ enum ClientEvent {
     #[serde(rename = "response.cancel")]
     ResponseCancel,
     #[serde(rename = "session.update")]
-    SessionUpdate { session: serde_json::Value },
+    SessionUpdate {
+        #[allow(dead_code)]
+        session: serde_json::Value,
+    },
 }
 
 /// Server-sent event types
@@ -200,7 +216,7 @@ enum ServerEvent {
     #[serde(rename = "response.created")]
     ResponseCreated { response: ResponseCreatedPayload },
     #[serde(rename = "response.done")]
-    ResponseDone { response: ResponseDonePayload },
+    ResponseDone { response: Box<ResponseDonePayload> },
     #[serde(rename = "response.incomplete")]
     ResponseIncomplete { response_id: String, reason: String },
     #[serde(rename = "response.output_item.added")]
@@ -237,6 +253,7 @@ enum ServerEvent {
     #[serde(rename = "response.error")]
     ResponseError { error: ErrorPayload },
     #[serde(rename = "response.output_text.usage")]
+    #[allow(dead_code)]
     ResponseOutputTextUsage {
         response_id: String,
         output_index: u32,
@@ -272,6 +289,7 @@ enum ServerEvent {
     #[serde(rename = "conversation.item.deleted")]
     ConversationItemDeleted { item_id: String },
     #[serde(rename = "rate_limits.updated")]
+    #[allow(dead_code)]
     RateLimitsUpdated { rate_limits: Vec<RateLimitPayload> },
 }
 
@@ -562,7 +580,7 @@ fn convert_conversation_item(item: &serde_json::Value) -> Result<Option<ChatMess
         "message" => {
             let role = item.get("role").and_then(|v| v.as_str()).unwrap_or("user");
 
-            let content = extract_content_from_message(&item);
+            let content = extract_content_from_message(item);
 
             let msg = match role {
                 "system" => ChatMessage::System {
@@ -574,7 +592,7 @@ fn convert_conversation_item(item: &serde_json::Value) -> Result<Option<ChatMess
                     name: None,
                 },
                 "assistant" => {
-                    let tool_calls = extract_tool_calls_from_message(&item);
+                    let tool_calls = extract_tool_calls_from_message(item);
                     ChatMessage::Assistant {
                         content: Some(content),
                         refusal: None,
@@ -676,7 +694,7 @@ async fn handle_ws_message(
                         .await?;
 
                     // Convert input to messages
-                    let input_messages = match convert_input_to_messages(input) {
+                    let input_messages = match convert_input_to_messages(*input) {
                         Ok(m) => m,
                         Err(e) => {
                             let error_event = ServerEvent::ResponseError {
@@ -749,6 +767,7 @@ async fn handle_ws_message(
 
                     // Parse tool_choice from JSON value
                     let parsed_tool_choice = tool_choice.and_then(|tc| {
+                        let tc = *tc;
                         if let Some(s) = tc.as_str() {
                             Some(llmg_core::types::ToolChoice::String(s.to_string()))
                         } else if let Some(obj) = tc.as_object() {
@@ -820,7 +839,7 @@ async fn handle_ws_message(
                         parallel_tool_calls,
                         text_format,
                         stream_options,
-                        metadata,
+                        metadata.map(|m| *m),
                         instructions,
                         reasoning_effort,
                         session.previous_response_id.clone(),
@@ -841,7 +860,7 @@ async fn handle_ws_message(
                         .send(Message::Text(serde_json::to_string(&incomplete_event)?))
                         .await?;
                 }
-                ClientEvent::ResponseCompact { response_id } => {
+                ClientEvent::ResponseCompact { response_id: _ } => {
                     let error_event = ServerEvent::ResponseError {
                         error: ErrorPayload {
                             code: "not_implemented".to_string(),
@@ -975,9 +994,6 @@ async fn handle_ws_message(
                         .send(Message::Text(serde_json::to_string(&cleared_event)?))
                         .await?;
                 }
-                _ => {
-                    tracing::debug!("Unhandled WebSocket event type");
-                }
             }
         }
         Message::Close(_) => {
@@ -989,6 +1005,7 @@ async fn handle_ws_message(
     Ok(())
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn handle_streaming_response(
     socket: &mut WebSocket,
     state: Arc<GatewayState>,
@@ -1115,8 +1132,7 @@ async fn handle_streaming_response(
                                 }
                             });
 
-                            let is_new_call =
-                                tool_calls.iter().find(|t| t.call_id == call_id).is_none();
+                            let is_new_call = !tool_calls.iter().any(|t| t.call_id == call_id);
 
                             if is_new_call {
                                 let output_index = output_items.len() as u32;
@@ -1244,7 +1260,7 @@ async fn handle_streaming_response(
     }
 
     if !full_text.is_empty() || tool_calls.is_empty() {
-        let text_content_index = if !tool_calls.is_empty() { 0u32 } else { 0u32 };
+        let text_content_index = 0u32;
 
         if !full_text.is_empty() {
             let done_event = ServerEvent::ResponseOutputTextDone {
@@ -1258,7 +1274,7 @@ async fn handle_streaming_response(
                 .await?;
         }
 
-        let msg_output_index = if tool_calls.is_empty() { 0u32 } else { 0u32 };
+        let msg_output_index = 0u32;
 
         let item_done = ServerEvent::ResponseOutputItemDone {
             response_id: response_id.clone(),
@@ -1318,7 +1334,7 @@ async fn handle_streaming_response(
     };
 
     let done_payload = ServerEvent::ResponseDone {
-        response: ResponseDonePayload {
+        response: Box::new(ResponseDonePayload {
             response: ResponseDetails {
                 id: response_id.clone(),
                 object: "response".to_string(),
@@ -1362,7 +1378,7 @@ async fn handle_streaming_response(
                 metadata,
                 user: None,
             },
-        },
+        }),
     };
     socket
         .send(Message::Text(serde_json::to_string(&done_payload)?))

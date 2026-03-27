@@ -58,6 +58,7 @@ pub struct CreateResponseRequest {
     #[serde(default)]
     pub store: Option<bool>,
     #[serde(default)]
+    #[allow(dead_code)]
     pub background: Option<bool>,
 }
 
@@ -241,6 +242,7 @@ pub struct ResponseTool {
     #[serde(default)]
     pub parameters: Option<serde_json::Value>,
     #[serde(default)]
+    #[allow(dead_code)]
     pub strict: Option<bool>,
 }
 
@@ -250,9 +252,10 @@ pub struct ResponseTextConfig {
     pub format: ResponseTextFormat,
 }
 
-#[derive(Debug, Deserialize, Clone, Serialize)]
+#[derive(Debug, Deserialize, Clone, Serialize, Default)]
 #[serde(tag = "type", rename_all = "snake_case")]
 pub enum ResponseTextFormat {
+    #[default]
     Text,
     JsonObject,
     #[serde(rename = "json_schema")]
@@ -262,12 +265,6 @@ pub enum ResponseTextFormat {
         #[serde(default)]
         strict: Option<bool>,
     },
-}
-
-impl Default for ResponseTextFormat {
-    fn default() -> Self {
-        ResponseTextFormat::Text
-    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -530,6 +527,7 @@ enum SseEvent {
         delta: String,
     },
     #[serde(rename = "response.function_call_arguments.done")]
+    #[allow(dead_code)]
     ResponseFunctionCallArgumentsDone {
         response_id: String,
         output_index: u32,
@@ -538,9 +536,10 @@ enum SseEvent {
     },
     #[serde(rename = "response.done")]
     ResponseDone {
-        response: CreateResponseResponse,
+        response: Box<CreateResponseResponse>,
     },
     #[serde(rename = "response.failed")]
+    #[allow(dead_code)]
     ResponseFailed {
         response_id: String,
         error: ResponseError,
@@ -905,11 +904,11 @@ async fn handle_streaming_response(
             mut stream,
             mut item_added,
             mut full_text,
-            mut output_index,
-            mut output_items,
+            output_index,
+            output_items,
             mut usage_input,
             mut usage_output,
-            mut done,
+            done,
         )| {
             let rid = response_id_clone.clone();
             let mid = generate_message_id();
@@ -1170,7 +1169,7 @@ async fn handle_streaming_response(
                         };
 
                         events.push(Ok(serialize_sse_event(&SseEvent::ResponseDone {
-                            response: done_response,
+                            response: Box::new(done_response),
                         })));
 
                         if store.unwrap_or(true) {
@@ -1368,7 +1367,7 @@ pub async fn list_input_items_handler(
 }
 
 pub async fn count_tokens_handler(
-    State(state): State<Arc<GatewayState>>,
+    State(_state): State<Arc<GatewayState>>,
     Json(request): Json<CreateResponseRequest>,
 ) -> Response {
     let mut messages = Vec::new();
@@ -1408,6 +1407,7 @@ pub struct SubmitToolOutputsRequest {
     #[serde(default)]
     pub stream: Option<bool>,
     #[serde(rename = "stream_options", default)]
+    #[allow(dead_code)]
     pub stream_options: Option<ResponseStreamOptions>,
 }
 
@@ -1454,7 +1454,7 @@ pub async fn submit_tool_outputs_handler(
         }
     };
 
-    let provider = match state.registry.get(&provider_name) {
+    let _provider = match state.registry.get(&provider_name) {
         Some(p) => p.clone(),
         None => {
             return api_error(
@@ -1788,7 +1788,7 @@ async fn handle_streaming_submit_tool_outputs(
 
 pub async fn compact_response_handler(
     State(_state): State<Arc<GatewayState>>,
-    Path(response_id): Path<String>,
+    Path(_response_id): Path<String>,
 ) -> Response {
     api_error(
         StatusCode::NOT_IMPLEMENTED,
