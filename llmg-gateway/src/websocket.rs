@@ -1458,7 +1458,7 @@ mod tests {
             } => {
                 assert_eq!(model, "openai/gpt-4");
                 assert!(previous_response_id.is_none());
-                if let InputValue::Array(arr) = input {
+                if let InputValue::Array(arr) = *input {
                     assert_eq!(arr.len(), 1);
                 } else {
                     panic!("Expected array input");
