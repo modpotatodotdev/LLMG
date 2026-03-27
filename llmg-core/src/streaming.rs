@@ -17,6 +17,9 @@ pub struct ChatCompletionChunk {
     pub model: String,
     /// Choice deltas
     pub choices: Vec<ChoiceDelta>,
+    /// Usage statistics (optional, for include_usage streaming)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub usage: Option<crate::types::Usage>,
 }
 
 impl ChatCompletionChunk {
@@ -38,6 +41,7 @@ impl ChatCompletionChunk {
                 delta,
                 finish_reason,
             }],
+            usage: None,
         }
     }
 
@@ -53,6 +57,7 @@ impl ChatCompletionChunk {
                 delta: DeltaContent::default(),
                 finish_reason: Some(finish_reason.to_string()),
             }],
+            usage: None,
         }
     }
 

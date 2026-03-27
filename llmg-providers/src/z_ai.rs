@@ -308,6 +308,7 @@ fn parse_zai_sse_data(
         created: chrono::Utc::now().timestamp(),
         model: model.to_string(),
         choices,
+        usage: None,
     }))
 }
 
