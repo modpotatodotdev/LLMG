@@ -363,6 +363,7 @@ fn parse_anthropic_sse_data(
                         delta: DeltaContent::content(content),
                         finish_reason: None,
                     }],
+                    usage: None,
                 }));
             }
         }
@@ -385,6 +386,7 @@ fn parse_anthropic_sse_data(
                         delta: DeltaContent::role(),
                         finish_reason: None,
                     }],
+                    usage: None,
                 }));
             }
         }
@@ -411,6 +413,7 @@ fn parse_anthropic_sse_data(
                         delta: DeltaContent::empty(),
                         finish_reason: Some(finish_reason.to_string()),
                     }],
+                    usage: None,
                 }));
             }
         }

@@ -17,7 +17,9 @@ path = "src/main.rs"
 [dependencies]
 llmg-core = { version = "0.2.0", path = "../llmg-core" }
 llmg-providers = { version = "0.2.0", path = "../llmg-providers" }
-axum = "0.7"
+axum = { version = "0.7", features = ["ws"] }
+tokio-tungstenite = "0.21"
+base64 = "0.22"
 tokio = { version = "1.0", features = ["full"] }
 tower = { version = "0.4", features = ["util"] }
 tower-http = { version = "0.5", features = ["cors", "trace"] }

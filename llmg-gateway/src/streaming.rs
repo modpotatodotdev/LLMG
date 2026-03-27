@@ -72,6 +72,7 @@ impl SseStream {
                         },
                         finish_reason: None,
                     }],
+                    usage: None,
                 }
             })
             .collect();
@@ -89,6 +90,7 @@ impl SseStream {
                         delta: DeltaContent::default(),
                         finish_reason: Some("stop".to_string()),
                     }],
+                    usage: None,
                 })
             }));
 
@@ -148,6 +150,7 @@ mod tests {
                 },
                 finish_reason: None,
             }],
+            usage: None,
         };
 
         let json = serde_json::to_string(&chunk).unwrap();

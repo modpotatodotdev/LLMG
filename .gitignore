@@ -4,6 +4,8 @@ target/
 .DS_Store
 .env
 
+.folder/
+
 # Docs
 docs/node_modules/
 docs/dist/

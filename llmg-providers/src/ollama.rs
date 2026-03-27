@@ -378,6 +378,7 @@ fn parse_ollama_stream_line(
                     delta: DeltaContent::content(message.content),
                     finish_reason: None,
                 }],
+                usage: None,
             }));
         }
     }

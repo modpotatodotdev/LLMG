@@ -7,6 +7,7 @@ use axum::{
 };
 use llmg_core::types::ChatCompletionRequest;
 use std::net::SocketAddr;
+use std::sync::Arc;
 use std::time::Duration;
 use tokio::signal;
 
@@ -14,23 +15,25 @@ mod cache;
 mod config;
 mod middleware;
 mod providers;
+mod response_store;
+mod responses_rest;
 mod routing;
 mod streaming;
+mod websocket;
 
 use cache::LlmCache;
 use config::Config;
 use llmg_core::provider::ProviderRegistry;
 use providers::create_registry;
+use response_store::ResponseStore;
 use routing::{route_chat_completion, route_chat_completion_stream};
+use axum::extract::{State, ws::WebSocketUpgrade};
 
-/// Gateway state shared across handlers
 pub struct GatewayState {
-    /// Configuration
     pub config: Config,
-    /// Provider registry
     pub registry: ProviderRegistry,
-    /// In-memory cache
     pub cache: LlmCache,
+    pub response_store: ResponseStore,
 }
 
 impl GatewayState {
@@ -40,6 +43,7 @@ impl GatewayState {
             config,
             registry,
             cache: LlmCache::new(),
+            response_store: ResponseStore::new(),
         }
     }
 }
@@ -103,12 +107,86 @@ async fn chat_completions(
     }
 }
 
+async fn responses_ws(
+    State(state): State<Arc<GatewayState>>,
+    ws: WebSocketUpgrade,
+) -> Response {
+    websocket::responses_handler(ws, State(state)).await
+}
+
+async fn responses_rest(
+    State(state): State<Arc<GatewayState>>,
+    axum::extract::Query(query): axum::extract::Query<responses_rest::StreamQuery>,
+    Json(request): Json<responses_rest::CreateResponseRequest>,
+) -> Response {
+    responses_rest::create_response_handler(State(state), axum::extract::Query(query), Json(request)).await
+}
+
+async fn retrieve_response(
+    State(state): State<Arc<GatewayState>>,
+    axum::extract::Path(response_id): axum::extract::Path<String>,
+) -> Response {
+    responses_rest::retrieve_response_handler(State(state), axum::extract::Path(response_id)).await
+}
+
+async fn delete_response(
+    State(state): State<Arc<GatewayState>>,
+    axum::extract::Path(response_id): axum::extract::Path<String>,
+) -> Response {
+    responses_rest::delete_response_handler(State(state), axum::extract::Path(response_id)).await
+}
+
+async fn cancel_response(
+    State(state): State<Arc<GatewayState>>,
+    axum::extract::Path(response_id): axum::extract::Path<String>,
+) -> Response {
+    responses_rest::cancel_response_handler(State(state), axum::extract::Path(response_id)).await
+}
+
+async fn list_input_items(
+    State(state): State<Arc<GatewayState>>,
+    axum::extract::Path(response_id): axum::extract::Path<String>,
+) -> Response {
+    responses_rest::list_input_items_handler(State(state), axum::extract::Path(response_id)).await
+}
+
+async fn compact_response(
+    State(state): State<Arc<GatewayState>>,
+    axum::extract::Path(response_id): axum::extract::Path<String>,
+) -> Response {
+    responses_rest::compact_response_handler(State(state), axum::extract::Path(response_id)).await
+}
+
+async fn count_tokens(
+    State(state): State<Arc<GatewayState>>,
+    Json(request): Json<responses_rest::CreateResponseRequest>,
+) -> Response {
+    responses_rest::count_tokens_handler(State(state), Json(request)).await
+}
+
+async fn submit_tool_outputs(
+    State(state): State<Arc<GatewayState>>,
+    axum::extract::Path(response_id): axum::extract::Path<String>,
+    axum::extract::Query(query): axum::extract::Query<responses_rest::StreamQuery>,
+    Json(request): Json<responses_rest::SubmitToolOutputsRequest>,
+) -> Response {
+    responses_rest::submit_tool_outputs_handler(State(state), axum::extract::Path(response_id), axum::extract::Query(query), Json(request)).await
+}
+
 /// Create the Axum router
 pub fn create_app(state: std::sync::Arc<GatewayState>) -> Router {
     Router::new()
         .route("/health", get(health_check))
         .route("/v1/models", get(list_models))
         .route("/v1/chat/completions", post(chat_completions))
+        .route("/v1/responses/ws", post(responses_ws))
+        .route("/v1/responses", post(responses_rest))
+        .route("/v1/responses/{response_id}", get(retrieve_response).delete(delete_response))
+        .route("/v1/responses/{response_id}/cancel", post(cancel_response))
+        .route("/v1/responses/{response_id}/input_items", get(list_input_items))
+        .route("/v1/responses/{response_id}/submit_tool_outputs", post(submit_tool_outputs))
+        .route("/v1/responses/{response_id}/compact", post(compact_response))
+        .route("/v1/responses/count_tokens", post(count_tokens))
         .with_state(state)
         .layer(axum::middleware::from_fn(middleware::rate_limit_middleware))
         .layer(axum::middleware::from_fn(middleware::auth_middleware))
