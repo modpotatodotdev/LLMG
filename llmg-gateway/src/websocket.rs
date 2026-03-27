@@ -1545,7 +1545,7 @@ mod tests {
                 assert_eq!(temperature, Some(0.7));
                 assert_eq!(top_p, Some(0.9));
                 assert_eq!(parallel_tool_calls, Some(true));
-                assert_eq!(stream_options.unwrap().include_usage, true);
+                assert!(stream_options.unwrap().include_usage);
             }
             _ => panic!("Expected ResponseCreate"),
         }
