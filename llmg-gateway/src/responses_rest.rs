@@ -3,7 +3,10 @@
 //! Provides a JSON-based REST interface for the Responses API with SSE streaming,
 //! complementing the WebSocket-based implementation.
 
-use crate::response_store::{StoredResponse, StoredIncompleteDetails, StoredReasoning, StoredTextFormat, StoredTextFormatType, StoredUsage};
+use crate::response_store::{
+    StoredIncompleteDetails, StoredReasoning, StoredResponse, StoredTextFormat,
+    StoredTextFormatType, StoredUsage,
+};
 use crate::routing::parse_model_id;
 use crate::GatewayState;
 use axum::{
@@ -110,15 +113,18 @@ fn convert_input_array(items: Vec<serde_json::Value>) -> Vec<ChatMessage> {
 
         match item_type {
             "message" => {
-                let role = item
-                    .get("role")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("user");
+                let role = item.get("role").and_then(|v| v.as_str()).unwrap_or("user");
                 let content = extract_content_from_item(&item);
 
                 let msg = match role {
-                    "system" => ChatMessage::System { content, name: None },
-                    "user" => ChatMessage::User { content, name: None },
+                    "system" => ChatMessage::System {
+                        content,
+                        name: None,
+                    },
+                    "user" => ChatMessage::User {
+                        content,
+                        name: None,
+                    },
                     "assistant" => {
                         let tool_calls = extract_tool_calls_from_item(&item);
                         ChatMessage::Assistant {
@@ -127,19 +133,16 @@ fn convert_input_array(items: Vec<serde_json::Value>) -> Vec<ChatMessage> {
                             tool_calls,
                         }
                     }
-                    _ => ChatMessage::User { content, name: None },
+                    _ => ChatMessage::User {
+                        content,
+                        name: None,
+                    },
                 };
                 messages.push(msg);
             }
             "function_call_output" => {
-                let output = item
-                    .get("output")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let call_id = item
-                    .get("call_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                let output = item.get("output").and_then(|v| v.as_str()).unwrap_or("");
+                let call_id = item.get("call_id").and_then(|v| v.as_str()).unwrap_or("");
                 messages.push(ChatMessage::Tool {
                     content: output.to_string(),
                     tool_call_id: call_id.to_string(),
@@ -167,7 +170,11 @@ fn extract_content_from_item(item: &serde_json::Value) -> String {
                     }
                 }
                 "input_image" => {
-                    if let Some(url) = c.get("image_url").and_then(|v| v.get("url")).and_then(|v| v.as_str()) {
+                    if let Some(url) = c
+                        .get("image_url")
+                        .and_then(|v| v.get("url"))
+                        .and_then(|v| v.as_str())
+                    {
                         parts.push(url.to_string());
                     } else if let Some(data) = c.get("image_data").and_then(|v| v.as_str()) {
                         parts.push(data.to_string());
@@ -185,15 +192,29 @@ fn extract_content_from_item(item: &serde_json::Value) -> String {
     }
 }
 
-fn extract_tool_calls_from_item(item: &serde_json::Value) -> Option<Vec<llmg_core::types::ToolCall>> {
+fn extract_tool_calls_from_item(
+    item: &serde_json::Value,
+) -> Option<Vec<llmg_core::types::ToolCall>> {
     let content_array = item.get("content").and_then(|v| v.as_array())?;
     let mut tool_calls = Vec::new();
 
     for c in content_array {
         if c.get("type").and_then(|v| v.as_str()) == Some("function_call") {
-            let call_id = c.get("id").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-            let name = c.get("name").and_then(|v| v.as_str()).unwrap_or_default().to_string();
-            let arguments = c.get("arguments").and_then(|v| v.as_str()).unwrap_or("{}").to_string();
+            let call_id = c
+                .get("id")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let name = c
+                .get("name")
+                .and_then(|v| v.as_str())
+                .unwrap_or_default()
+                .to_string();
+            let arguments = c
+                .get("arguments")
+                .and_then(|v| v.as_str())
+                .unwrap_or("{}")
+                .to_string();
 
             tool_calls.push(llmg_core::types::ToolCall {
                 id: call_id,
@@ -203,7 +224,11 @@ fn extract_tool_calls_from_item(item: &serde_json::Value) -> Option<Vec<llmg_cor
         }
     }
 
-    if tool_calls.is_empty() { None } else { Some(tool_calls) }
+    if tool_calls.is_empty() {
+        None
+    } else {
+        Some(tool_calls)
+    }
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -366,7 +391,13 @@ fn generate_message_id() -> String {
     format!("msg_{}", URL_SAFE_NO_PAD.encode(&bytes[..16]))
 }
 
-fn api_error(status: StatusCode, error_type: &str, code: &str, message: &str, param: Option<&str>) -> Response {
+fn api_error(
+    status: StatusCode,
+    error_type: &str,
+    code: &str,
+    message: &str,
+    param: Option<&str>,
+) -> Response {
     (
         status,
         Json(serde_json::json!({
@@ -408,20 +439,27 @@ fn convert_tool_choice(tc: Option<serde_json::Value>) -> Option<llmg_core::types
         if let Some(s) = tc.as_str() {
             Some(llmg_core::types::ToolChoice::String(s.to_string()))
         } else if let Some(obj) = tc.as_object() {
-            obj.get("type").and_then(|t| t.as_str()).and_then(|type_str| {
-                if type_str == "function" {
-                    obj.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()).map(|name| {
-                        llmg_core::types::ToolChoice::Named(llmg_core::types::NamedToolChoice {
-                            r#type: "function".to_string(),
-                            function: llmg_core::types::FunctionName {
-                                name: name.to_string(),
-                            },
-                        })
-                    })
-                } else {
-                    None
-                }
-            })
+            obj.get("type")
+                .and_then(|t| t.as_str())
+                .and_then(|type_str| {
+                    if type_str == "function" {
+                        obj.get("function")
+                            .and_then(|f| f.get("name"))
+                            .and_then(|n| n.as_str())
+                            .map(|name| {
+                                llmg_core::types::ToolChoice::Named(
+                                    llmg_core::types::NamedToolChoice {
+                                        r#type: "function".to_string(),
+                                        function: llmg_core::types::FunctionName {
+                                            name: name.to_string(),
+                                        },
+                                    },
+                                )
+                            })
+                    } else {
+                        None
+                    }
+                })
         } else {
             None
         }
@@ -437,9 +475,13 @@ fn serialize_sse_event(event: &SseEvent) -> axum::response::sse::Event {
 #[serde(tag = "type", rename_all = "snake_case")]
 enum SseEvent {
     #[serde(rename = "response.created")]
-    ResponseCreated { response: SseResponseInfo },
+    ResponseCreated {
+        response: SseResponseInfo,
+    },
     #[serde(rename = "response.in_progress")]
-    ResponseInProgress { response: SseResponseInfo },
+    ResponseInProgress {
+        response: SseResponseInfo,
+    },
     #[serde(rename = "response.output_item.added")]
     ResponseOutputItemAdded {
         response_id: String,
@@ -495,13 +537,17 @@ enum SseEvent {
         arguments: String,
     },
     #[serde(rename = "response.done")]
-    ResponseDone { response: CreateResponseResponse },
+    ResponseDone {
+        response: CreateResponseResponse,
+    },
     #[serde(rename = "response.failed")]
     ResponseFailed {
         response_id: String,
         error: ResponseError,
     },
-    Error { error: ResponseError },
+    Error {
+        error: ResponseError,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -673,7 +719,9 @@ async fn handle_non_streaming_response(
                 store: request.store,
                 service_tier: request.service_tier.clone(),
                 temperature: request.temperature,
-                text: ResponseTextOutput { format: text_format },
+                text: ResponseTextOutput {
+                    format: text_format,
+                },
                 tool_choice: raw_tool_choice.clone(),
                 tools: serialized_tools.clone(),
                 top_p: request.top_p,
@@ -705,7 +753,9 @@ async fn handle_non_streaming_response(
                     store: true,
                     service_tier: request.service_tier,
                     temperature: request.temperature,
-                    text: StoredTextFormat { format: StoredTextFormatType::Text },
+                    text: StoredTextFormat {
+                        format: StoredTextFormatType::Text,
+                    },
                     tool_choice: raw_tool_choice,
                     tools: serialized_tools,
                     top_p: request.top_p,
@@ -833,13 +883,34 @@ async fn handle_streaming_response(
     let parallel_tool_calls = request.parallel_tool_calls;
     let reasoning = request.reasoning.clone();
     let text_format = request.text.map(|t| t.format).unwrap_or_default();
-    let include_usage = request.stream_options.map(|o| o.include_usage).unwrap_or(false);
+    let include_usage = request
+        .stream_options
+        .map(|o| o.include_usage)
+        .unwrap_or(false);
 
     let response_store = state.response_store.clone();
 
     let sse_stream = stream::unfold(
-        (stream, false, String::new(), 0u32, Vec::<serde_json::Value>::new(), 0u32, 0u32, false),
-        move |(mut stream, mut item_added, mut full_text, mut output_index, mut output_items, mut usage_input, mut usage_output, mut done)| {
+        (
+            stream,
+            false,
+            String::new(),
+            0u32,
+            Vec::<serde_json::Value>::new(),
+            0u32,
+            0u32,
+            false,
+        ),
+        move |(
+            mut stream,
+            mut item_added,
+            mut full_text,
+            mut output_index,
+            mut output_items,
+            mut usage_input,
+            mut usage_output,
+            mut done,
+        )| {
             let rid = response_id_clone.clone();
             let mid = generate_message_id();
             let model = model_clone.clone();
@@ -869,7 +940,9 @@ async fn handle_streaming_response(
                             }
                         }
 
-                        let mut events: Vec<Result<axum::response::sse::Event, std::convert::Infallible>> = Vec::new();
+                        let mut events: Vec<
+                            Result<axum::response::sse::Event, std::convert::Infallible>,
+                        > = Vec::new();
 
                         if !item_added {
                             item_added = true;
@@ -893,58 +966,86 @@ async fn handle_streaming_response(
                                     previous_response_id: prev_id.clone(),
                                 },
                             })));
-                            events.push(Ok(serialize_sse_event(&SseEvent::ResponseOutputItemAdded {
-                                response_id: rid.clone(),
-                                output_index: 0,
-                                item: serde_json::json!({
-                                    "type": "message",
-                                    "id": mid.clone(),
-                                    "status": "in_progress",
-                                    "role": "assistant",
-                                    "content": []
-                                }),
-                            })));
-                            events.push(Ok(serialize_sse_event(&SseEvent::ResponseContentPartAdded {
-                                response_id: rid.clone(),
-                                output_index: 0,
-                                content_index: 0,
-                                part: serde_json::json!({
-                                    "type": "output_text",
-                                    "text": "",
-                                    "annotations": []
-                                }),
-                            })));
+                            events.push(Ok(serialize_sse_event(
+                                &SseEvent::ResponseOutputItemAdded {
+                                    response_id: rid.clone(),
+                                    output_index: 0,
+                                    item: serde_json::json!({
+                                        "type": "message",
+                                        "id": mid.clone(),
+                                        "status": "in_progress",
+                                        "role": "assistant",
+                                        "content": []
+                                    }),
+                                },
+                            )));
+                            events.push(Ok(serialize_sse_event(
+                                &SseEvent::ResponseContentPartAdded {
+                                    response_id: rid.clone(),
+                                    output_index: 0,
+                                    content_index: 0,
+                                    part: serde_json::json!({
+                                        "type": "output_text",
+                                        "text": "",
+                                        "annotations": []
+                                    }),
+                                },
+                            )));
                         }
 
                         for choice in &chunk.choices {
                             if let Some(content) = &choice.delta.content {
                                 full_text.push_str(content);
-                                events.push(Ok(serialize_sse_event(&SseEvent::ResponseOutputTextDelta {
-                                    response_id: rid.clone(),
-                                    output_index: 0,
-                                    content_index: 0,
-                                    delta: content.clone(),
-                                })));
+                                events.push(Ok(serialize_sse_event(
+                                    &SseEvent::ResponseOutputTextDelta {
+                                        response_id: rid.clone(),
+                                        output_index: 0,
+                                        content_index: 0,
+                                        delta: content.clone(),
+                                    },
+                                )));
                             }
 
                             if let Some(tc_deltas) = &choice.delta.tool_calls {
                                 for tc_delta in tc_deltas {
-                                    let call_id = tc_delta.id.clone().unwrap_or_else(|| format!("call_{}", uuid::Uuid::new_v4()));
-                                    let args = tc_delta.function.as_ref().and_then(|f| f.arguments.clone()).unwrap_or_default();
-                                    events.push(Ok(serialize_sse_event(&SseEvent::ResponseFunctionCallArgumentsDelta {
-                                        response_id: rid.clone(),
-                                        output_index: output_index + 1,
-                                        call_id: call_id.clone(),
-                                        delta: args,
-                                    })));
+                                    let call_id = tc_delta.id.clone().unwrap_or_else(|| {
+                                        format!("call_{}", uuid::Uuid::new_v4())
+                                    });
+                                    let args = tc_delta
+                                        .function
+                                        .as_ref()
+                                        .and_then(|f| f.arguments.clone())
+                                        .unwrap_or_default();
+                                    events.push(Ok(serialize_sse_event(
+                                        &SseEvent::ResponseFunctionCallArgumentsDelta {
+                                            response_id: rid.clone(),
+                                            output_index: output_index + 1,
+                                            call_id: call_id.clone(),
+                                            delta: args,
+                                        },
+                                    )));
                                 }
                             }
                         }
 
-                        Some((events, (stream, item_added, full_text, output_index, output_items, usage_input, usage_output, done)))
+                        Some((
+                            events,
+                            (
+                                stream,
+                                item_added,
+                                full_text,
+                                output_index,
+                                output_items,
+                                usage_input,
+                                usage_output,
+                                done,
+                            ),
+                        ))
                     }
                     Some(Err(e)) => {
-                        let events: Vec<Result<axum::response::sse::Event, std::convert::Infallible>> = vec![Ok(serialize_sse_event(&SseEvent::Error {
+                        let events: Vec<
+                            Result<axum::response::sse::Event, std::convert::Infallible>,
+                        > = vec![Ok(serialize_sse_event(&SseEvent::Error {
                             error: ResponseError {
                                 error_type: "server_error".to_string(),
                                 code: "stream_error".to_string(),
@@ -952,11 +1053,25 @@ async fn handle_streaming_response(
                                 param: None,
                             },
                         }))];
-                        Some((events, (stream, item_added, full_text, output_index, output_items, usage_input, usage_output, true)))
+                        Some((
+                            events,
+                            (
+                                stream,
+                                item_added,
+                                full_text,
+                                output_index,
+                                output_items,
+                                usage_input,
+                                usage_output,
+                                true,
+                            ),
+                        ))
                     }
                     None => {
                         let completed_at = chrono::Utc::now().timestamp() as u64;
-                        let mut events: Vec<Result<axum::response::sse::Event, std::convert::Infallible>> = Vec::new();
+                        let mut events: Vec<
+                            Result<axum::response::sse::Event, std::convert::Infallible>,
+                        > = Vec::new();
 
                         events.push(Ok(serialize_sse_event(&SseEvent::ResponseOutputTextDone {
                             response_id: rid.clone(),
@@ -964,16 +1079,18 @@ async fn handle_streaming_response(
                             content_index: 0,
                             text: full_text.clone(),
                         })));
-                        events.push(Ok(serialize_sse_event(&SseEvent::ResponseContentPartDone {
-                            response_id: rid.clone(),
-                            output_index: 0,
-                            content_index: 0,
-                            part: serde_json::json!({
-                                "type": "output_text",
-                                "text": full_text,
-                                "annotations": []
-                            }),
-                        })));
+                        events.push(Ok(serialize_sse_event(
+                            &SseEvent::ResponseContentPartDone {
+                                response_id: rid.clone(),
+                                output_index: 0,
+                                content_index: 0,
+                                part: serde_json::json!({
+                                    "type": "output_text",
+                                    "text": full_text,
+                                    "annotations": []
+                                }),
+                            },
+                        )));
 
                         let output_item = serde_json::json!({
                             "type": "message",
@@ -1087,7 +1204,9 @@ async fn handle_streaming_response(
                                 store: true,
                                 service_tier: service_tier_clone,
                                 temperature,
-                                text: StoredTextFormat { format: StoredTextFormatType::Text },
+                                text: StoredTextFormat {
+                                    format: StoredTextFormatType::Text,
+                                },
                                 tool_choice: tool_choice_clone,
                                 tools: tools_clone.map(|t| {
                                     t.into_iter()
@@ -1124,7 +1243,19 @@ async fn handle_streaming_response(
                             response_store_clone.store(stored).await;
                         }
 
-                        Some((events, (stream, item_added, full_text, output_index, output_items, usage_input, usage_output, true)))
+                        Some((
+                            events,
+                            (
+                                stream,
+                                item_added,
+                                full_text,
+                                output_index,
+                                output_items,
+                                usage_input,
+                                usage_output,
+                                true,
+                            ),
+                        ))
                     }
                 }
             }
@@ -1216,11 +1347,15 @@ pub async fn list_input_items_handler(
     match state.response_store.get(&response_id).await {
         Some(stored) => {
             let items = stored.input_items;
-            (StatusCode::OK, Json(serde_json::json!({
-                "object": "list",
-                "data": items,
-                "has_more": false
-            }))).into_response()
+            (
+                StatusCode::OK,
+                Json(serde_json::json!({
+                    "object": "list",
+                    "data": items,
+                    "has_more": false
+                })),
+            )
+                .into_response()
         }
         None => api_error(
             StatusCode::NOT_FOUND,
@@ -1258,9 +1393,13 @@ pub async fn count_tokens_handler(
 
     let token_estimate = (text.len() as f64 / 4.0).ceil() as u32;
 
-    (StatusCode::OK, Json(serde_json::json!({
-        "input_tokens": token_estimate
-    }))).into_response()
+    (
+        StatusCode::OK,
+        Json(serde_json::json!({
+            "input_tokens": token_estimate
+        })),
+    )
+        .into_response()
 }
 
 #[derive(Debug, Deserialize)]
@@ -1348,8 +1487,14 @@ pub async fn submit_tool_outputs_handler(
                     if let Some(role) = item.get("role").and_then(|v| v.as_str()) {
                         let content = extract_content_from_item(item);
                         let msg = match role {
-                            "system" => ChatMessage::System { content, name: None },
-                            "user" => ChatMessage::User { content, name: None },
+                            "system" => ChatMessage::System {
+                                content,
+                                name: None,
+                            },
+                            "user" => ChatMessage::User {
+                                content,
+                                name: None,
+                            },
                             "assistant" => {
                                 let tool_calls = extract_tool_calls_from_item(item);
                                 ChatMessage::Assistant {
@@ -1358,7 +1503,10 @@ pub async fn submit_tool_outputs_handler(
                                     tool_calls,
                                 }
                             }
-                            _ => ChatMessage::User { content, name: None },
+                            _ => ChatMessage::User {
+                                content,
+                                name: None,
+                            },
                         };
                         messages.push(msg);
                     }
@@ -1434,8 +1582,14 @@ pub async fn submit_tool_outputs_handler(
                             r#type: "function".to_string(),
                             function: llmg_core::types::FunctionDefinition {
                                 name: func.get("name")?.as_str()?.to_string(),
-                                description: func.get("description").and_then(|v| v.as_str()).map(|s| s.to_string()),
-                                parameters: func.get("parameters").cloned().unwrap_or(serde_json::json!({})),
+                                description: func
+                                    .get("description")
+                                    .and_then(|v| v.as_str())
+                                    .map(|s| s.to_string()),
+                                parameters: func
+                                    .get("parameters")
+                                    .cloned()
+                                    .unwrap_or(serde_json::json!({})),
                             },
                         })
                     } else {
@@ -1456,7 +1610,8 @@ pub async fn submit_tool_outputs_handler(
     if should_stream {
         handle_streaming_submit_tool_outputs(state, chat_request, stored_response, request).await
     } else {
-        handle_non_streaming_submit_tool_outputs(state, chat_request, stored_response, request).await
+        handle_non_streaming_submit_tool_outputs(state, chat_request, stored_response, request)
+            .await
     }
 }
 
@@ -1538,14 +1693,19 @@ async fn handle_non_streaming_submit_tool_outputs(
                 instructions: stored_response.instructions.clone(),
                 max_output_tokens: stored_response.max_output_tokens,
                 previous_response_id: Some(stored_response.id.clone()),
-                reasoning: stored_response.reasoning.as_ref().map(|r| ResponseReasoningOutput {
-                    effort: r.effort.clone(),
-                    summary: r.summary.clone(),
-                }),
+                reasoning: stored_response
+                    .reasoning
+                    .as_ref()
+                    .map(|r| ResponseReasoningOutput {
+                        effort: r.effort.clone(),
+                        summary: r.summary.clone(),
+                    }),
                 store: Some(stored_response.store),
                 service_tier: stored_response.service_tier.clone(),
                 temperature: stored_response.temperature,
-                text: ResponseTextOutput { format: ResponseTextFormat::Text },
+                text: ResponseTextOutput {
+                    format: ResponseTextFormat::Text,
+                },
                 tool_choice: stored_response.tool_choice.clone(),
                 tools: stored_response.tools.clone(),
                 top_p: stored_response.top_p,
@@ -1575,7 +1735,9 @@ async fn handle_non_streaming_submit_tool_outputs(
                     store: stored_response.store,
                     service_tier: stored_response.service_tier.clone(),
                     temperature: stored_response.temperature,
-                    text: StoredTextFormat { format: StoredTextFormatType::Text },
+                    text: StoredTextFormat {
+                        format: StoredTextFormatType::Text,
+                    },
                     tool_choice: stored_response.tool_choice.clone(),
                     tools: stored_response.tools.clone(),
                     top_p: stored_response.top_p,
@@ -1652,7 +1814,9 @@ fn stored_to_response(stored: StoredResponse) -> CreateResponseResponse {
             message: e.message,
             param: e.param,
         }),
-        incomplete_details: stored.incomplete_details.map(|d| ResponseIncompleteDetails { reason: d.reason }),
+        incomplete_details: stored
+            .incomplete_details
+            .map(|d| ResponseIncompleteDetails { reason: d.reason }),
         instructions: stored.instructions,
         max_output_tokens: stored.max_output_tokens,
         previous_response_id: stored.previous_response_id,
@@ -1667,11 +1831,13 @@ fn stored_to_response(stored: StoredResponse) -> CreateResponseResponse {
             format: match stored.text.format {
                 StoredTextFormatType::Text => ResponseTextFormat::Text,
                 StoredTextFormatType::JsonObject => ResponseTextFormat::JsonObject,
-                StoredTextFormatType::JsonSchema { name, schema } => ResponseTextFormat::JsonSchema {
-                    name,
-                    schema,
-                    strict: None,
-                },
+                StoredTextFormatType::JsonSchema { name, schema } => {
+                    ResponseTextFormat::JsonSchema {
+                        name,
+                        schema,
+                        strict: None,
+                    }
+                }
             },
         },
         tool_choice: stored.tool_choice,
@@ -1680,9 +1846,15 @@ fn stored_to_response(stored: StoredResponse) -> CreateResponseResponse {
         truncation: stored.truncation,
         usage: stored.usage.map(|u| ResponseUsage {
             input_tokens: u.input_tokens,
-            input_tokens_details: u.input_tokens_details.map(|d| ResponseInputTokensDetails { cached_tokens: d.cached_tokens }),
+            input_tokens_details: u.input_tokens_details.map(|d| ResponseInputTokensDetails {
+                cached_tokens: d.cached_tokens,
+            }),
             output_tokens: u.output_tokens,
-            output_tokens_details: u.output_tokens_details.map(|d| ResponseOutputTokensDetails { reasoning_tokens: d.reasoning_tokens }),
+            output_tokens_details: u
+                .output_tokens_details
+                .map(|d| ResponseOutputTokensDetails {
+                    reasoning_tokens: d.reasoning_tokens,
+                }),
             total_tokens: u.total_tokens,
         }),
         metadata: stored.metadata,
@@ -1717,7 +1889,10 @@ mod tests {
         assert_eq!(request.top_p, Some(0.9));
         assert_eq!(request.stream, Some(false));
         assert_eq!(request.store, Some(true));
-        assert_eq!(request.reasoning.as_ref().unwrap().effort, Some("high".to_string()));
+        assert_eq!(
+            request.reasoning.as_ref().unwrap().effort,
+            Some("high".to_string())
+        );
         assert_eq!(request.service_tier, Some("auto".to_string()));
     }
 
@@ -1791,7 +1966,10 @@ mod tests {
         }
 
         match &messages[1] {
-            ChatMessage::Tool { content, tool_call_id } => {
+            ChatMessage::Tool {
+                content,
+                tool_call_id,
+            } => {
                 assert_eq!(content, "Weather is sunny");
                 assert_eq!(tool_call_id, "call_123");
             }
@@ -1821,7 +1999,10 @@ mod tests {
 
         let json_schema_json = r#"{"format": {"type": "json_schema", "name": "MySchema", "schema": {"type": "object"}}}"#;
         let config2: ResponseTextConfig = serde_json::from_str(json_schema_json).unwrap();
-        assert!(matches!(config2.format, ResponseTextFormat::JsonSchema { .. }));
+        assert!(matches!(
+            config2.format,
+            ResponseTextFormat::JsonSchema { .. }
+        ));
     }
 
     #[test]
@@ -1876,7 +2057,9 @@ mod tests {
             store: Some(true),
             service_tier: None,
             temperature: Some(0.7),
-            text: ResponseTextOutput { format: ResponseTextFormat::Text },
+            text: ResponseTextOutput {
+                format: ResponseTextFormat::Text,
+            },
             tool_choice: None,
             tools: None,
             top_p: None,

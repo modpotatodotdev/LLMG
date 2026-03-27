@@ -73,7 +73,10 @@ enum TextFormatType {
     Text,
     JsonObject,
     #[serde(rename = "json_schema")]
-    JsonSchema { schema: serde_json::Value, name: String },
+    JsonSchema {
+        schema: serde_json::Value,
+        name: String,
+    },
 }
 
 /// Tool definition from Responses API format
@@ -167,21 +170,15 @@ enum ClientEvent {
         service_tier: Option<String>,
     },
     #[serde(rename = "response.compact")]
-    ResponseCompact {
-        response_id: String,
-    },
+    ResponseCompact { response_id: String },
     #[serde(rename = "input_audio_buffer.append")]
-    InputAudioBufferAppend {
-        audio: String,
-    },
+    InputAudioBufferAppend { audio: String },
     #[serde(rename = "input_audio_buffer.commit")]
     InputAudioBufferCommit,
     #[serde(rename = "input_audio_buffer.clear")]
     InputAudioBufferClear,
     #[serde(rename = "conversation.item.create")]
-    ConversationItemCreate {
-        item: serde_json::Value,
-    },
+    ConversationItemCreate { item: serde_json::Value },
     #[serde(rename = "conversation.item.truncate")]
     ConversationItemTruncate {
         item_id: String,
@@ -189,15 +186,11 @@ enum ClientEvent {
         truncate_offset: u32,
     },
     #[serde(rename = "conversation.item.delete")]
-    ConversationItemDelete {
-        item_id: String,
-    },
+    ConversationItemDelete { item_id: String },
     #[serde(rename = "response.cancel")]
     ResponseCancel,
     #[serde(rename = "session.update")]
-    SessionUpdate {
-        session: serde_json::Value,
-    },
+    SessionUpdate { session: serde_json::Value },
 }
 
 /// Server-sent event types
@@ -205,18 +198,11 @@ enum ClientEvent {
 #[serde(tag = "type", rename_all = "snake_case")]
 enum ServerEvent {
     #[serde(rename = "response.created")]
-    ResponseCreated {
-        response: ResponseCreatedPayload,
-    },
+    ResponseCreated { response: ResponseCreatedPayload },
     #[serde(rename = "response.done")]
-    ResponseDone {
-        response: ResponseDonePayload,
-    },
+    ResponseDone { response: ResponseDonePayload },
     #[serde(rename = "response.incomplete")]
-    ResponseIncomplete {
-        response_id: String,
-        reason: String,
-    },
+    ResponseIncomplete { response_id: String, reason: String },
     #[serde(rename = "response.output_item.added")]
     ResponseOutputItemAdded {
         response_id: String,
@@ -249,9 +235,7 @@ enum ServerEvent {
         error: ErrorPayload,
     },
     #[serde(rename = "response.error")]
-    ResponseError {
-        error: ErrorPayload,
-    },
+    ResponseError { error: ErrorPayload },
     #[serde(rename = "response.output_text.usage")]
     ResponseOutputTextUsage {
         response_id: String,
@@ -274,33 +258,21 @@ enum ServerEvent {
         arguments: String,
     },
     #[serde(rename = "session.created")]
-    SessionCreated {
-        session: SessionPayload,
-    },
+    SessionCreated { session: SessionPayload },
     #[serde(rename = "session.updated")]
-    SessionUpdated {
-        session: SessionPayload,
-    },
+    SessionUpdated { session: SessionPayload },
     #[serde(rename = "input_audio_buffer.committed")]
     InputAudioBufferCommitted,
     #[serde(rename = "input_audio_buffer.cleared")]
     InputAudioBufferCleared,
     #[serde(rename = "conversation.item.created")]
-    ConversationItemCreated {
-        item: serde_json::Value,
-    },
+    ConversationItemCreated { item: serde_json::Value },
     #[serde(rename = "conversation.item.truncated")]
-    ConversationItemTruncated {
-        item_id: String,
-    },
+    ConversationItemTruncated { item_id: String },
     #[serde(rename = "conversation.item.deleted")]
-    ConversationItemDeleted {
-        item_id: String,
-    },
+    ConversationItemDeleted { item_id: String },
     #[serde(rename = "rate_limits.updated")]
-    RateLimitsUpdated {
-        rate_limits: Vec<RateLimitPayload>,
-    },
+    RateLimitsUpdated { rate_limits: Vec<RateLimitPayload> },
 }
 
 #[derive(Debug, Serialize)]
@@ -383,7 +355,10 @@ enum TextFormatTypeOutput {
     Text,
     JsonObject,
     #[serde(rename = "json_schema")]
-    JsonSchema { name: String, schema: serde_json::Value },
+    JsonSchema {
+        name: String,
+        schema: serde_json::Value,
+    },
 }
 
 #[derive(Debug, Serialize)]
@@ -446,17 +421,16 @@ struct RateLimitPayload {
 /// Convert Responses API input (string or array) to chat messages
 fn convert_input_to_messages(input: InputValue) -> Result<Vec<ChatMessage>, String> {
     match input {
-        InputValue::String(s) => {
-            Ok(vec![ChatMessage::User { content: s, name: None }])
-        }
+        InputValue::String(s) => Ok(vec![ChatMessage::User {
+            content: s,
+            name: None,
+        }]),
         InputValue::Array(items) => convert_input_array(items),
     }
 }
 
 /// Convert input items array from Responses API format to ChatCompletionRequest
-fn convert_input_array(
-    input: Vec<serde_json::Value>,
-) -> Result<Vec<ChatMessage>, String> {
+fn convert_input_array(input: Vec<serde_json::Value>) -> Result<Vec<ChatMessage>, String> {
     let mut messages = Vec::new();
 
     for item in input {
@@ -464,16 +438,19 @@ fn convert_input_array(
 
         match item_type {
             "message" => {
-                let role = item
-                    .get("role")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("user");
+                let role = item.get("role").and_then(|v| v.as_str()).unwrap_or("user");
 
                 let content = extract_content_from_message(&item);
 
                 let msg = match role {
-                    "system" => ChatMessage::System { content, name: None },
-                    "user" => ChatMessage::User { content, name: None },
+                    "system" => ChatMessage::System {
+                        content,
+                        name: None,
+                    },
+                    "user" => ChatMessage::User {
+                        content,
+                        name: None,
+                    },
                     "assistant" => {
                         let tool_calls = extract_tool_calls_from_message(&item);
                         ChatMessage::Assistant {
@@ -482,19 +459,16 @@ fn convert_input_array(
                             tool_calls,
                         }
                     }
-                    _ => ChatMessage::User { content, name: None },
+                    _ => ChatMessage::User {
+                        content,
+                        name: None,
+                    },
                 };
                 messages.push(msg);
             }
             "function_call_output" => {
-                let output = item
-                    .get("output")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
-                let call_id = item
-                    .get("call_id")
-                    .and_then(|v| v.as_str())
-                    .unwrap_or("");
+                let output = item.get("output").and_then(|v| v.as_str()).unwrap_or("");
+                let call_id = item.get("call_id").and_then(|v| v.as_str()).unwrap_or("");
 
                 messages.push(ChatMessage::Tool {
                     content: output.to_string(),
@@ -510,7 +484,9 @@ fn convert_input_array(
 }
 
 /// Extract tool calls from a message's content array for conversation continuation
-fn extract_tool_calls_from_message(item: &serde_json::Value) -> Option<Vec<llmg_core::types::ToolCall>> {
+fn extract_tool_calls_from_message(
+    item: &serde_json::Value,
+) -> Option<Vec<llmg_core::types::ToolCall>> {
     let content_array = item.get("content").and_then(|v| v.as_array())?;
     let mut tool_calls = Vec::new();
 
@@ -518,7 +494,8 @@ fn extract_tool_calls_from_message(item: &serde_json::Value) -> Option<Vec<llmg_
         if c.get("type").and_then(|v| v.as_str()) == Some("function_call") {
             let call_id = c.get("id")?.as_str()?.to_string();
             let name = c.get("name")?.as_str()?.to_string();
-            let arguments = c.get("arguments")
+            let arguments = c
+                .get("arguments")
                 .and_then(|v| v.as_str())
                 .unwrap_or("{}")
                 .to_string();
@@ -526,10 +503,7 @@ fn extract_tool_calls_from_message(item: &serde_json::Value) -> Option<Vec<llmg_
             tool_calls.push(llmg_core::types::ToolCall {
                 id: call_id,
                 r#type: "function".to_string(),
-                function: llmg_core::types::FunctionCall {
-                    name,
-                    arguments,
-                },
+                function: llmg_core::types::FunctionCall { name, arguments },
             });
         }
     }
@@ -559,7 +533,11 @@ fn extract_content_from_message(item: &serde_json::Value) -> String {
                     }
                 }
                 "input_image" => {
-                    if let Some(image_url) = c.get("image_url").and_then(|v| v.get("url")).and_then(|v| v.as_str()) {
+                    if let Some(image_url) = c
+                        .get("image_url")
+                        .and_then(|v| v.get("url"))
+                        .and_then(|v| v.as_str())
+                    {
                         parts.push(image_url.to_string());
                     } else if let Some(image_data) = c.get("image_data").and_then(|v| v.as_str()) {
                         parts.push(image_data.to_string());
@@ -582,16 +560,19 @@ fn convert_conversation_item(item: &serde_json::Value) -> Result<Option<ChatMess
 
     match item_type {
         "message" => {
-            let role = item
-                .get("role")
-                .and_then(|v| v.as_str())
-                .unwrap_or("user");
+            let role = item.get("role").and_then(|v| v.as_str()).unwrap_or("user");
 
             let content = extract_content_from_message(&item);
 
             let msg = match role {
-                "system" => ChatMessage::System { content, name: None },
-                "user" => ChatMessage::User { content, name: None },
+                "system" => ChatMessage::System {
+                    content,
+                    name: None,
+                },
+                "user" => ChatMessage::User {
+                    content,
+                    name: None,
+                },
                 "assistant" => {
                     let tool_calls = extract_tool_calls_from_message(&item);
                     ChatMessage::Assistant {
@@ -605,14 +586,8 @@ fn convert_conversation_item(item: &serde_json::Value) -> Result<Option<ChatMess
             Ok(Some(msg))
         }
         "function_call_output" => {
-            let output = item
-                .get("output")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
-            let call_id = item
-                .get("call_id")
-                .and_then(|v| v.as_str())
-                .unwrap_or("");
+            let output = item.get("output").and_then(|v| v.as_str()).unwrap_or("");
+            let call_id = item.get("call_id").and_then(|v| v.as_str()).unwrap_or("");
 
             Ok(Some(ChatMessage::Tool {
                 content: output.to_string(),
@@ -723,7 +698,13 @@ async fn handle_ws_message(
                     let instructions_content = instructions.clone().unwrap_or_default();
 
                     if !instructions_content.is_empty() {
-                        all_messages.insert(0, ChatMessage::System { content: instructions_content, name: None });
+                        all_messages.insert(
+                            0,
+                            ChatMessage::System {
+                                content: instructions_content,
+                                name: None,
+                            },
+                        );
                     }
                     all_messages.extend(input_messages);
 
@@ -771,20 +752,27 @@ async fn handle_ws_message(
                         if let Some(s) = tc.as_str() {
                             Some(llmg_core::types::ToolChoice::String(s.to_string()))
                         } else if let Some(obj) = tc.as_object() {
-                            obj.get("type").and_then(|t| t.as_str()).and_then(|type_str| {
-                                if type_str == "function" {
-                                    obj.get("function").and_then(|f| f.get("name")).and_then(|n| n.as_str()).map(|name| {
-                                        llmg_core::types::ToolChoice::Named(llmg_core::types::NamedToolChoice {
-                                            r#type: "function".to_string(),
-                                            function: llmg_core::types::FunctionName {
-                                                name: name.to_string(),
-                                            },
-                                        })
-                                    })
-                                } else {
-                                    None
-                                }
-                            })
+                            obj.get("type")
+                                .and_then(|t| t.as_str())
+                                .and_then(|type_str| {
+                                    if type_str == "function" {
+                                        obj.get("function")
+                                            .and_then(|f| f.get("name"))
+                                            .and_then(|n| n.as_str())
+                                            .map(|name| {
+                                                llmg_core::types::ToolChoice::Named(
+                                                    llmg_core::types::NamedToolChoice {
+                                                        r#type: "function".to_string(),
+                                                        function: llmg_core::types::FunctionName {
+                                                            name: name.to_string(),
+                                                        },
+                                                    },
+                                                )
+                                            })
+                                    } else {
+                                        None
+                                    }
+                                })
                         } else {
                             None
                         }
@@ -809,13 +797,16 @@ async fn handle_ws_message(
                     let text_format = text.map(|t| t.format).unwrap_or_default();
 
                     // Store response info for potential conversation continuation
-                    session.response_cache.insert(response_id.clone(), ResponseCacheEntry {
-                        id: response_id.clone(),
-                        model: model.clone(),
-                        messages: all_messages,
-                        output_text: String::new(),
-                        created_at,
-                    });
+                    session.response_cache.insert(
+                        response_id.clone(),
+                        ResponseCacheEntry {
+                            id: response_id.clone(),
+                            model: model.clone(),
+                            messages: all_messages,
+                            output_text: String::new(),
+                            created_at,
+                        },
+                    );
                     session.previous_response_id = previous_response_id.clone();
 
                     handle_streaming_response(
@@ -839,7 +830,9 @@ async fn handle_ws_message(
                     .await?;
                 }
                 ClientEvent::ResponseCancel => {
-                    session.cancelled.store(true, std::sync::atomic::Ordering::SeqCst);
+                    session
+                        .cancelled
+                        .store(true, std::sync::atomic::Ordering::SeqCst);
                     let incomplete_event = ServerEvent::ResponseIncomplete {
                         response_id: session.previous_response_id.clone().unwrap_or_default(),
                         reason: "cancelled".to_string(),
@@ -880,9 +873,7 @@ async fn handle_ws_message(
                             return Ok(());
                         }
                     }
-                    let item_id = item.get("id")
-                        .and_then(|v| v.as_str())
-                        .unwrap_or("unknown");
+                    let item_id = item.get("id").and_then(|v| v.as_str()).unwrap_or("unknown");
                     let created_event = ServerEvent::ConversationItemCreated {
                         item: json!({
                             "id": item_id,
@@ -894,11 +885,17 @@ async fn handle_ws_message(
                         .send(Message::Text(serde_json::to_string(&created_event)?))
                         .await?;
                 }
-                ClientEvent::ConversationItemTruncate { item_id, content_index: _, truncate_offset } => {
+                ClientEvent::ConversationItemTruncate {
+                    item_id,
+                    content_index: _,
+                    truncate_offset,
+                } => {
                     let original_len = session.conversation_history.len();
                     for msg in session.conversation_history.iter_mut() {
                         match msg {
-                            ChatMessage::Assistant { content: Some(c), .. } => {
+                            ChatMessage::Assistant {
+                                content: Some(c), ..
+                            } => {
                                 if c.len() > truncate_offset as usize {
                                     c.truncate(truncate_offset as usize);
                                 }
@@ -921,16 +918,13 @@ async fn handle_ws_message(
                 }
                 ClientEvent::ConversationItemDelete { item_id } => {
                     let original_len = session.conversation_history.len();
-                    session.conversation_history.retain(|m| {
-                        match m {
-                            ChatMessage::Assistant { content, .. } => {
-                                !content.as_ref().map(|c| c.contains(&item_id)).unwrap_or(false)
-                            }
-                            ChatMessage::User { content, .. } => {
-                                !content.contains(&item_id)
-                            }
-                            _ => true,
-                        }
+                    session.conversation_history.retain(|m| match m {
+                        ChatMessage::Assistant { content, .. } => !content
+                            .as_ref()
+                            .map(|c| c.contains(&item_id))
+                            .unwrap_or(false),
+                        ChatMessage::User { content, .. } => !content.contains(&item_id),
+                        _ => true,
                     });
                     let deleted_event = ServerEvent::ConversationItemDeleted {
                         item_id: item_id.clone(),
@@ -938,7 +932,11 @@ async fn handle_ws_message(
                     socket
                         .send(Message::Text(serde_json::to_string(&deleted_event)?))
                         .await?;
-                    tracing::debug!("Deleted item {}, removed {} messages", item_id, original_len - session.conversation_history.len());
+                    tracing::debug!(
+                        "Deleted item {}, removed {} messages",
+                        item_id,
+                        original_len - session.conversation_history.len()
+                    );
                 }
                 ClientEvent::SessionUpdate { session: _ } => {
                     let update_event = ServerEvent::SessionUpdated {
@@ -1015,7 +1013,10 @@ async fn handle_streaming_response(
     let request_tools = request.tools.clone();
     let request_tool_choice = request.tool_choice.clone();
     let request_reasoning_effort = reasoning_effort.clone();
-    let include_usage = stream_options.as_ref().map(|o| o.include_usage).unwrap_or(false);
+    let include_usage = stream_options
+        .as_ref()
+        .map(|o| o.include_usage)
+        .unwrap_or(false);
 
     let (provider_name, model_name) = match parse_model_id(&request.model) {
         Ok((p, m)) => (p.to_string(), m),
@@ -1114,12 +1115,14 @@ async fn handle_streaming_response(
                                 }
                             });
 
-                            let is_new_call = tool_calls.iter().find(|t| t.call_id == call_id).is_none();
+                            let is_new_call =
+                                tool_calls.iter().find(|t| t.call_id == call_id).is_none();
 
                             if is_new_call {
                                 let output_index = output_items.len() as u32;
-                                let func_name = tc_delta.function.as_ref().and_then(|f| f.name.clone());
-                                
+                                let func_name =
+                                    tc_delta.function.as_ref().and_then(|f| f.name.clone());
+
                                 let item_added = ServerEvent::ResponseOutputItemAdded {
                                     response_id: response_id.clone(),
                                     output_index,
@@ -1144,17 +1147,22 @@ async fn handle_streaming_response(
                             }
 
                             if let Some(tc) = tool_calls.iter_mut().find(|t| t.call_id == call_id) {
-                                if let Some(name) = tc_delta.function.as_ref().and_then(|f| f.name.clone()) {
+                                if let Some(name) =
+                                    tc_delta.function.as_ref().and_then(|f| f.name.clone())
+                                {
                                     tc.name = Some(name);
                                 }
-                                if let Some(args) = tc_delta.function.as_ref().and_then(|f| f.arguments.clone()) {
+                                if let Some(args) =
+                                    tc_delta.function.as_ref().and_then(|f| f.arguments.clone())
+                                {
                                     tc.arguments.push_str(&args);
-                                    let delta_event = ServerEvent::ResponseFunctionCallArgumentsDelta {
-                                        response_id: response_id.clone(),
-                                        output_index: tc.output_index,
-                                        call_id: call_id.clone(),
-                                        delta: args,
-                                    };
+                                    let delta_event =
+                                        ServerEvent::ResponseFunctionCallArgumentsDelta {
+                                            response_id: response_id.clone(),
+                                            output_index: tc.output_index,
+                                            call_id: call_id.clone(),
+                                            delta: args,
+                                        };
                                     socket
                                         .send(Message::Text(serde_json::to_string(&delta_event)?))
                                         .await?;
@@ -1236,11 +1244,7 @@ async fn handle_streaming_response(
     }
 
     if !full_text.is_empty() || tool_calls.is_empty() {
-        let text_content_index = if !tool_calls.is_empty() {
-            0u32
-        } else {
-            0u32
-        };
+        let text_content_index = if !tool_calls.is_empty() { 0u32 } else { 0u32 };
 
         if !full_text.is_empty() {
             let done_event = ServerEvent::ResponseOutputTextDone {
@@ -1254,11 +1258,7 @@ async fn handle_streaming_response(
                 .await?;
         }
 
-        let msg_output_index = if tool_calls.is_empty() {
-            0u32
-        } else {
-            0u32
-        };
+        let msg_output_index = if tool_calls.is_empty() { 0u32 } else { 0u32 };
 
         let item_done = ServerEvent::ResponseOutputItemDone {
             response_id: response_id.clone(),
@@ -1279,17 +1279,20 @@ async fn handle_streaming_response(
             .send(Message::Text(serde_json::to_string(&item_done)?))
             .await?;
 
-        output_items.insert(0, json!({
-            "type": "message",
-            "id": message_id,
-            "status": "completed",
-            "role": "assistant",
-            "content": [{
-                "type": "output_text",
-                "text": full_text,
-                "annotations": []
-            }]
-        }));
+        output_items.insert(
+            0,
+            json!({
+                "type": "message",
+                "id": message_id,
+                "status": "completed",
+                "role": "assistant",
+                "content": [{
+                    "type": "output_text",
+                    "text": full_text,
+                    "annotations": []
+                }]
+            }),
+        );
     }
 
     let usage = if include_usage && (usage_input_tokens > 0 || usage_output_tokens > 0) {
@@ -1340,16 +1343,18 @@ async fn handle_streaming_response(
                 text: text_format_output,
                 tool_choice: request_tool_choice.as_ref().map(|tc| json!(tc)),
                 tools: request_tools.as_ref().map(|t| {
-                    t.iter().map(|tool| {
-                        json!({
-                            "type": "function",
-                            "function": {
-                                "name": tool.function.name,
-                                "description": tool.function.description,
-                                "parameters": tool.function.parameters
-                            }
+                    t.iter()
+                        .map(|tool| {
+                            json!({
+                                "type": "function",
+                                "function": {
+                                    "name": tool.function.name,
+                                    "description": tool.function.description,
+                                    "parameters": tool.function.parameters
+                                }
+                            })
                         })
-                    }).collect()
+                        .collect()
                 }),
                 top_p: request_top_p,
                 truncation: None,
@@ -1402,7 +1407,8 @@ async fn handle_socket(socket: WebSocket, state: Arc<GatewayState>) {
     while let Some(msg) = socket.next().await {
         match msg {
             Ok(msg) => {
-                if let Err(e) = handle_ws_message(&mut socket, state.clone(), &mut session, msg).await
+                if let Err(e) =
+                    handle_ws_message(&mut socket, state.clone(), &mut session, msg).await
                 {
                     tracing::error!("WebSocket error: {}", e);
                     break;
@@ -1462,13 +1468,11 @@ mod tests {
 
     #[test]
     fn test_convert_input_messages() {
-        let input = InputValue::Array(vec![
-            json!({
-                "type": "message",
-                "role": "user",
-                "content": [{"type": "input_text", "text": "Hello"}]
-            }),
-        ]);
+        let input = InputValue::Array(vec![json!({
+            "type": "message",
+            "role": "user",
+            "content": [{"type": "input_text", "text": "Hello"}]
+        })]);
 
         let messages = convert_input_to_messages(input).unwrap();
         assert_eq!(messages.len(), 1);
@@ -1507,9 +1511,9 @@ mod tests {
             "parallel_tool_calls": true,
             "stream_options": {"include_usage": true}
         }"#;
-        
+
         let event: ClientEvent = serde_json::from_str(json).unwrap();
-        
+
         match event {
             ClientEvent::ResponseCreate {
                 model,
@@ -1539,9 +1543,9 @@ mod tests {
             "input": "Hello",
             "reasoning_effort": "high"
         }"#;
-        
+
         let event: ClientEvent = serde_json::from_str(json).unwrap();
-        
+
         match event {
             ClientEvent::ResponseCreate {
                 model,
@@ -1564,9 +1568,9 @@ mod tests {
             "input": "Hello",
             "service_tier": "auto"
         }"#;
-        
+
         let event: ClientEvent = serde_json::from_str(json).unwrap();
-        
+
         match event {
             ClientEvent::ResponseCreate {
                 model,
@@ -1591,9 +1595,9 @@ mod tests {
                 "content": [{"type": "input_text", "text": "Hello"}]
             }
         }"#;
-        
+
         let event: ClientEvent = serde_json::from_str(json).unwrap();
-        
+
         match event {
             ClientEvent::ConversationItemCreate { item } => {
                 assert_eq!(item.get("id").and_then(|v| v.as_str()), Some("msg_123"));
@@ -1611,11 +1615,15 @@ mod tests {
             "content_index": 0,
             "truncate_offset": 50
         }"#;
-        
+
         let event: ClientEvent = serde_json::from_str(json).unwrap();
-        
+
         match event {
-            ClientEvent::ConversationItemTruncate { item_id, content_index, truncate_offset } => {
+            ClientEvent::ConversationItemTruncate {
+                item_id,
+                content_index,
+                truncate_offset,
+            } => {
                 assert_eq!(item_id, "msg_123");
                 assert_eq!(content_index, 0);
                 assert_eq!(truncate_offset, 50);
@@ -1630,9 +1638,9 @@ mod tests {
             "type": "conversation.item.delete",
             "item_id": "msg_123"
         }"#;
-        
+
         let event: ClientEvent = serde_json::from_str(json).unwrap();
-        
+
         match event {
             ClientEvent::ConversationItemDelete { item_id } => {
                 assert_eq!(item_id, "msg_123");
@@ -1645,7 +1653,10 @@ mod tests {
     fn test_parse_input_audio_buffer_events() {
         let append_json = r#"{"type":"input_audio_buffer.append","audio":"base64data"}"#;
         let append_event: ClientEvent = serde_json::from_str(append_json).unwrap();
-        assert!(matches!(append_event, ClientEvent::InputAudioBufferAppend { .. }));
+        assert!(matches!(
+            append_event,
+            ClientEvent::InputAudioBufferAppend { .. }
+        ));
 
         let commit_json = r#"{"type":"input_audio_buffer.commit"}"#;
         let commit_event: ClientEvent = serde_json::from_str(commit_json).unwrap();
@@ -1663,7 +1674,7 @@ mod tests {
             "role": "assistant",
             "content": [{"type": "input_text", "text": "Hello"}]
         });
-        
+
         let result = convert_conversation_item(&item);
         assert!(result.is_ok());
         assert!(result.unwrap().is_some());
@@ -1676,7 +1687,7 @@ mod tests {
             "output": "result data",
             "call_id": "call_123"
         });
-        
+
         let result = convert_conversation_item(&item);
         assert!(result.is_ok());
         let msg = result.unwrap().unwrap();
@@ -1690,7 +1701,7 @@ mod tests {
         });
         let config: TextFormatConfig = serde_json::from_value(text_json).unwrap();
         assert!(matches!(config.format, TextFormatType::Text));
-        
+
         let json_schema_json = json!({
             "format": {
                 "type": "json_schema",
@@ -1710,10 +1721,13 @@ mod tests {
             "description": "Get weather for a location",
             "parameters": {"type": "object", "properties": {}}
         });
-        
+
         let tool: ToolDefinition = serde_json::from_value(json).unwrap();
         assert_eq!(tool.tool_type, "function");
         assert_eq!(tool.name, "get_weather");
-        assert_eq!(tool.description, Some("Get weather for a location".to_string()));
+        assert_eq!(
+            tool.description,
+            Some("Get weather for a location".to_string())
+        );
     }
 }

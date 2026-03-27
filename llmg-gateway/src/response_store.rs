@@ -71,7 +71,10 @@ pub enum StoredTextFormatType {
     Text,
     JsonObject,
     #[serde(rename = "json_schema")]
-    JsonSchema { name: String, schema: serde_json::Value },
+    JsonSchema {
+        name: String,
+        schema: serde_json::Value,
+    },
 }
 
 impl Default for StoredTextFormat {
