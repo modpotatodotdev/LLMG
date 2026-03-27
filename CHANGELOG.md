@@ -1,6 +1,6 @@
 # Changelog
 
-## [Unreleased]
+## [0.3.0]
 
 ### Added
 - **Responses API**: OpenAI-compatible Responses API at `/v1/responses` (REST + WebSocket)
