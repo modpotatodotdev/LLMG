@@ -211,6 +211,7 @@ fn build_llmg_request(model: &str, request: &CompletionRequest) -> ChatCompletio
         user: None,
         tools,
         tool_choice: None,
+        response_format: None,
     }
 }
 

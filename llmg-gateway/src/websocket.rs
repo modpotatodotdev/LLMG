@@ -810,6 +810,7 @@ async fn handle_ws_message(
                         user: None,
                         tools: converted_tools,
                         tool_choice: parsed_tool_choice,
+                        response_format: None,
                     };
 
                     // Build text format output

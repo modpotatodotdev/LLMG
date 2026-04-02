@@ -60,6 +60,8 @@ pub struct CreateResponseRequest {
     #[serde(default)]
     #[allow(dead_code)]
     pub background: Option<bool>,
+    #[serde(rename = "response_format", default)]
+    pub response_format: Option<llmg_core::types::ResponseFormat>,
 }
 
 #[derive(Debug, Deserialize, Clone)]
@@ -644,6 +646,7 @@ async fn handle_non_streaming_response(
         user: None,
         tools,
         tool_choice,
+        response_format: request.response_format,
     };
 
     match provider.chat_completion(chat_request).await {
@@ -851,6 +854,7 @@ async fn handle_streaming_response(
         user: None,
         tools,
         tool_choice,
+        response_format: None,
     };
 
     let stream = match provider.chat_completion_stream(chat_request).await {
@@ -1605,6 +1609,7 @@ pub async fn submit_tool_outputs_handler(
                 llmg_core::types::ToolChoice::String("auto".to_string())
             }
         }),
+        response_format: None,
     };
 
     if should_stream {
