@@ -134,6 +134,26 @@ impl AnthropicClient {
             }
         }
 
+        // Handle structured outputs via prompt engineering for providers without native support
+        if let Some(ref response_format) = request.response_format {
+            if response_format.is_structured() {
+                let schema_instruction = if let Some(schema_config) = response_format.schema() {
+                    format!(
+                        "\n\nYou must respond with JSON that strictly adheres to this schema:\n{}",
+                        serde_json::to_string_pretty(&schema_config.schema).unwrap_or_default()
+                    )
+                } else {
+                    "\n\nYou must respond with valid JSON only.".to_string()
+                };
+
+                system = Some(format!(
+                    "{}{}",
+                    system.unwrap_or_default(),
+                    schema_instruction
+                ));
+            }
+        }
+
         AnthropicRequest {
             model: request.model,
             messages,
@@ -466,6 +486,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let anthropic_req = client.convert_request(request);
@@ -479,3 +500,4 @@ mod tests {
         assert_eq!(anthropic_req.messages[0].role, "user");
     }
 }
+
