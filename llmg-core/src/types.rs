@@ -4,6 +4,85 @@
 
 use serde::{Deserialize, Serialize};
 
+/// Specifies the format that the model must output
+///
+/// Used to enforce structured outputs like JSON or JSON Schema validation.
+/// Compatible with OpenAI, Anthropic (via prompt engineering), and other providers.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(tag = "type", rename_all = "snake_case")]
+pub enum ResponseFormat {
+    /// Enables JSON mode, ensuring the model outputs valid JSON
+    JsonObject,
+    /// Enables structured outputs with JSON Schema validation
+    JsonSchema {
+        /// The JSON Schema configuration
+        json_schema: JsonSchemaConfig,
+    },
+    /// Plain text output (default behavior)
+    Text,
+}
+
+/// Configuration for JSON Schema structured outputs
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct JsonSchemaConfig {
+    /// The name of the response format (used for identification)
+    pub name: String,
+    /// The JSON Schema object describing the output structure
+    pub schema: serde_json::Value,
+    /// Whether to enforce strict schema adherence (supported by OpenAI)
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub strict: Option<bool>,
+    /// A description of what the schema represents
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub description: Option<String>,
+}
+
+impl JsonSchemaConfig {
+    /// Create a new JSON Schema configuration
+    pub fn new(name: impl Into<String>, schema: serde_json::Value) -> Self {
+        Self {
+            name: name.into(),
+            schema,
+            strict: None,
+            description: None,
+        }
+    }
+
+    /// Enable strict mode for strict schema adherence
+    pub fn with_strict(mut self, strict: bool) -> Self {
+        self.strict = Some(strict);
+        self
+    }
+
+    /// Add a description for the schema
+    pub fn with_description(mut self, description: impl Into<String>) -> Self {
+        self.description = Some(description.into());
+        self
+    }
+}
+
+impl ResponseFormat {
+    /// Create a JSON Schema response format from a schema configuration
+    pub fn json_schema(config: JsonSchemaConfig) -> Self {
+        Self::JsonSchema {
+            json_schema: config,
+        }
+    }
+
+    /// Check if this is a structured output format (JSON Object or JSON Schema)
+    pub fn is_structured(&self) -> bool {
+        matches!(self, Self::JsonObject | Self::JsonSchema { .. })
+    }
+
+    /// Get the JSON schema if this is a JSON Schema format
+    pub fn schema(&self) -> Option<&JsonSchemaConfig> {
+        match self {
+            Self::JsonSchema { json_schema } => Some(json_schema),
+            _ => None,
+        }
+    }
+}
+
 /// Request body for chat completion requests
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ChatCompletionRequest {
@@ -52,6 +131,10 @@ pub struct ChatCompletionRequest {
     /// Controls which (if any) tool is called by the model
     #[serde(skip_serializing_if = "Option::is_none")]
     pub tool_choice: Option<ToolChoice>,
+
+    /// Specifies the format that the model must output
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub response_format: Option<ResponseFormat>,
 }
 
 /// A tool that can be called by the model
