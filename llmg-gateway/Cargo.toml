@@ -15,8 +15,8 @@ name = "llmg-gateway"
 path = "src/main.rs"
 
 [dependencies]
-llmg-core = { version = "0.3.0", path = "../llmg-core" }
-llmg-providers = { version = "0.3.0", path = "../llmg-providers" }
+llmg-core = { version = "0.4.0", path = "../llmg-core" }
+llmg-providers = { version = "0.4.0", path = "../llmg-providers" }
 axum = { version = "0.7", features = ["ws"] }
 tokio-tungstenite = "0.21"
 base64 = "0.22"

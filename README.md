@@ -52,8 +52,8 @@ docker run -p 8080:8080 -e OPENAI_API_KEY=sk-... ghcr.io/modpotatodotdev/llmg:la
 
 ```toml
 [dependencies]
-llmg-core = "0.3.0"
-llmg-providers = { version = "0.3.0", features = ["openai"] }
+llmg-core = "0.4.0"
+llmg-providers = { version = "0.4.0", features = ["openai"] }
 ```
 
 ```rust
