@@ -867,6 +867,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let copilot_req = client.convert_request(request);
@@ -906,6 +907,7 @@ mod tests {
             user: None,
             tools: Some(vec![tool]),
             tool_choice: Some(llmg_core::types::ToolChoice::String("auto".to_string())),
+            response_format: None,
         };
 
         let copilot_req = client.convert_request(request);
@@ -938,3 +940,4 @@ mod tests {
         );
     }
 }
+

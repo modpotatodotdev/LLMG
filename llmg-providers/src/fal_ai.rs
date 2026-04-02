@@ -233,6 +233,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let fal_req = client.convert_request(request);
@@ -242,3 +243,4 @@ mod tests {
         assert_eq!(fal_req.messages[0].role, "user");
     }
 }
+

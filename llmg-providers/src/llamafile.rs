@@ -299,6 +299,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let llamafile_req = client.convert_request(request);
@@ -309,3 +310,4 @@ mod tests {
         assert_eq!(llamafile_req.max_tokens, Some(100));
     }
 }
+

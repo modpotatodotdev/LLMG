@@ -156,3 +156,4 @@ mod tests {
         assert_eq!(client.provider_name(), "voyageai");
     }
 }
+

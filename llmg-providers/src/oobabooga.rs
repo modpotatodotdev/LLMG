@@ -269,6 +269,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let oobabooga_req = client.convert_request(request);
@@ -276,3 +277,4 @@ mod tests {
         assert_eq!(oobabooga_req.data["model"], "mistral-7b-instruct");
     }
 }
+

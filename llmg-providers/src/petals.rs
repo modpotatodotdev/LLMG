@@ -244,6 +244,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let petals_req = client.convert_request(request);
@@ -253,3 +254,4 @@ mod tests {
         assert!(petals_req.parameters.is_some());
     }
 }
+

@@ -279,3 +279,4 @@ mod tests {
         assert!(url.contains("completions"));
     }
 }
+

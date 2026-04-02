@@ -680,3 +680,4 @@ mod tests {
         assert!(url.contains("anthropic.claude-3-opus-20240229-v1:0"));
     }
 }
+

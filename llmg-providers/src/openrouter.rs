@@ -337,6 +337,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let client = OpenRouterClient::new("test-key").with_app_name("test-app");
@@ -348,3 +349,4 @@ mod tests {
         assert!(body.contains("provider"));
     }
 }
+

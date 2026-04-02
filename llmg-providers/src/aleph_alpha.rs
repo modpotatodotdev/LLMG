@@ -225,6 +225,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let aa_req = client.convert_request(request);
@@ -234,3 +235,4 @@ mod tests {
         assert_eq!(aa_req.temperature, Some(0.5));
     }
 }
+

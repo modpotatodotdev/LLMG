@@ -499,3 +499,4 @@ mod tests {
         assert!(models.contains(&"llama3.1-8B".to_string()));
     }
 }
+

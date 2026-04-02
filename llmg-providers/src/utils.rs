@@ -182,3 +182,4 @@ pub async fn register_all_from_env(registry: &mut ProviderRegistry) {
         }
     }
 }
+

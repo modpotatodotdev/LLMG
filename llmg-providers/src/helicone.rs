@@ -233,6 +233,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let helicone_req = client.convert_request(request);
@@ -242,3 +243,4 @@ mod tests {
         assert_eq!(helicone_req.messages[0].role, "user");
     }
 }
+

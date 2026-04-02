@@ -340,3 +340,4 @@ mod tests {
         assert!(url.contains("Llama-2-7b-chat-hf"));
     }
 }
+

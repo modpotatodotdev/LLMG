@@ -431,6 +431,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let ollama_req = client.convert_request(request);
@@ -441,3 +442,4 @@ mod tests {
         assert_eq!(ollama_req.messages[0].content, "Hello!");
     }
 }
+

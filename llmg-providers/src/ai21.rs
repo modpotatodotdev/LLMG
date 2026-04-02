@@ -244,6 +244,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let ai21_req = client.convert_request(request);
@@ -253,3 +254,4 @@ mod tests {
         assert_eq!(ai21_req.messages[0].role, "user");
     }
 }
+

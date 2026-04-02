@@ -205,3 +205,4 @@ mod tests {
         assert!(url.contains("api-version=2023-05-15"));
     }
 }
+

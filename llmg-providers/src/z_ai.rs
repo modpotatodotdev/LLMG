@@ -329,3 +329,4 @@ mod tests {
         assert!(client.base_url.contains("coding/paas/v4"));
     }
 }
+

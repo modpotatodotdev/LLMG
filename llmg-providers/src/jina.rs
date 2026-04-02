@@ -269,6 +269,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let jina_req = client.convert_request(request);
@@ -280,3 +281,4 @@ mod tests {
         assert_eq!(jina_req.temperature, Some(0.7));
     }
 }
+

@@ -245,6 +245,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let xai_req = client.convert_request(request);
@@ -255,3 +256,4 @@ mod tests {
         assert_eq!(xai_req.messages[1].role, "user");
     }
 }
+

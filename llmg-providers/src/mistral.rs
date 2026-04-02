@@ -274,6 +274,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let mistral_req = client.convert_request(request);
@@ -283,3 +284,4 @@ mod tests {
         assert_eq!(mistral_req.messages[0].role, "user");
     }
 }
+

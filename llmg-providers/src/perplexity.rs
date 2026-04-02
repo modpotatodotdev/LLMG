@@ -238,6 +238,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let perplexity_req = client.convert_request(request);
@@ -247,3 +248,4 @@ mod tests {
         assert_eq!(perplexity_req.messages[0].role, "user");
     }
 }
+

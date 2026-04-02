@@ -160,3 +160,4 @@ pub use watsonx::WatsonxClient;
 pub use xai::XaiClient;
 pub use xinference::XinferenceClient;
 pub use z_ai::ZaiClient;
+

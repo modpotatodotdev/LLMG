@@ -225,6 +225,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let minimax_req = client.convert_request(request);
@@ -235,3 +236,4 @@ mod tests {
         assert_eq!(minimax_req.temperature, Some(0.8));
     }
 }
+

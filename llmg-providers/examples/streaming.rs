@@ -23,6 +23,7 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
         user: None,
         tools: None,
         tool_choice: None,
+        response_format: None,
     };
 
     println!("Sending request...");

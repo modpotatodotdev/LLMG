@@ -263,6 +263,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let xinference_req = client.convert_request(request);
@@ -273,3 +274,4 @@ mod tests {
         assert_eq!(xinference_req.temperature, Some(0.7));
     }
 }
+

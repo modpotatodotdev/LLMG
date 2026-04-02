@@ -435,3 +435,4 @@ mod tests {
         assert!(url.contains("gemini-2.0-flash-exp"));
     }
 }
+

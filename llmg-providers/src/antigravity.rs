@@ -653,3 +653,4 @@ mod tests {
         assert_eq!(client.map_model_name("gemini-1.5-pro"), "gemini-1.5-pro");
     }
 }
+

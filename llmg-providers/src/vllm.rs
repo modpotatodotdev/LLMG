@@ -300,6 +300,7 @@ mod tests {
             user: None,
             tools: None,
             tool_choice: None,
+            response_format: None,
         };
 
         let vllm_req = client.convert_request(request);
@@ -310,3 +311,4 @@ mod tests {
         assert_eq!(vllm_req.max_tokens, Some(100));
     }
 }
+
